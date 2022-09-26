@@ -5,4 +5,7 @@ project(SoftRenderer)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(SoftRenderer main.cpp)
+include_directories("include")
+
+aux_source_directory(./src CPP_LIST)
+add_executable(SoftRenderer ${CPP_LIST})
