@@ -1,55 +1,61 @@
-#ifndef __GEOMETRY_H__
-#define __GEOMETRY_H__
+#ifndef GEOMETRY_H
+#define GEOMETRY_H
 
-#include <cmath>
+#include "matrix.h"
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Matrix4 getViewMatrix(const Vector3& center, const Vector3& camera,
+const Vector3& up) {
+    Vector3 gaze, right;
 
-template <class t> struct Vec2 {
-    union {
-        struct {t u, v;};
-        struct {t x, y;};
-        t raw[2];
-    };
-    Vec2() : u(0), v(0) {}
-    Vec2(t _u, t _v) : u(_u),v(_v) {}
-    inline Vec2<t> operator +(const Vec2<t> &V) const { return Vec2<t>(u+V.u, v+V.v); }
-    inline Vec2<t> operator -(const Vec2<t> &V) const { return Vec2<t>(u-V.u, v-V.v); }
-    inline Vec2<t> operator *(double d)         const { return Vec2<t>(u*d, v*d); }
-    template <class > friend std::ostream& operator<<(std::ostream& s, Vec2<t>& v);
-};
+    Vector3 z = unit_vector(camera - center);
+    Vector3 x = unit_vector(cross(up, z));
+    Vector3 y = unit_vector(cross(z, x));
 
-template <class t> struct Vec3 {
-    union {
-        struct {t x, y, z;};
-        struct { t ivert, iuv, inorm; };
-        t raw[3];
-    };
-    Vec3() : x(0), y(0), z(0) {}
-    Vec3(t _x, t _y, t _z) : x(_x),y(_y),z(_z) {}
-    inline Vec3<t> operator ^(const Vec3<t> &v) const { return Vec3<t>(y*v.z-z*v.y, z*v.x-x*v.z, x*v.y-y*v.x); }
-    inline Vec3<t> operator +(const Vec3<t> &v) const { return Vec3<t>(x+v.x, y+v.y, z+v.z); }
-    inline Vec3<t> operator -(const Vec3<t> &v) const { return Vec3<t>(x-v.x, y-v.y, z-v.z); }
-    inline Vec3<t> operator *(double d)         const { return Vec3<t>(x*d, y*d, z*d); }
-    inline t       operator *(const Vec3<t> &v) const { return x*v.x + y*v.y + z*v.z; }
-    double norm () const { return std::sqrt(x*x+y*y+z*z); }
-    Vec3<t> & normalize(t l=1) { *this = (*this)*(l/norm()); return *this; }
-    template <class > friend std::ostream& operator<<(std::ostream& s, Vec3<t>& v);
-};
+    Matrix4 translate, rotate;
+    translate << 1.0, 0.0, 0.0, -camera[0],
+                 0.0, 1.0, 0.0, -camera[1],
+                 0.0, 0.0, 1.0, -camera[2],
+                 0.0, 0.0, 0.0, 1.0;
+    rotate << x[0], x[1], x[2], 0.0,
+              y[0], y[1], y[2], 0.0,
+              z[0], z[1], z[2], 0.0,
+              0.0, 0.0, 0.0, 1.0;
 
-typedef Vec2<double> Vec2d;
-typedef Vec2<int> Vec2i;
-typedef Vec3<double> Vec3d;
-typedef Vec3<int> Vec3i;
-
-template <class t> std::ostream& operator<<(std::ostream& s, Vec2<t>& v) {
-    s << "(" << v.x << ", " << v.y << ")\n";
-    return s;
+    return rotate * translate;
 }
 
-template <class t> std::ostream& operator<<(std::ostream& s, Vec3<t>& v) {
-    s << "(" << v.x << ", " << v.y << ", " << v.z << ")\n";
-    return s;
+Matrix4 getOrthogonalProjectionMatrix(double left, double right, double bottom,
+double top, double near, double far) {
+    Matrix4 translate, scale;
+    translate << 1.0, 0.0, 0.0, -(left + right)/2.0,
+                 0.0, 1.0, 0.0, -(bottom + far)/2.0,
+                 0.0, 0.0, 1.0, -(near + far)/2.0,
+                 0.0, 0.0, 0.0, 1.0;
+    scale << 2.0/(right - left), 0.0, 0.0, 0.0,
+             0.0, 2.0/(top - bottom), 0.0, 0.0,
+             0.0, 0.0, 2.0/(near - far), 0.0,
+             0.0, 0.0, 0.0, 1.0;
+    return scale * translate;
+}
+
+Matrix4 getPerspectiveProjectionMatrix(double left, double right, double bottom,
+double top, double near, double far) {
+    Matrix4 perspective2orthogonal;
+    perspective2orthogonal << near, 0.0, 0.0, 0.0,
+                              0.0, near, 0.0, 0.0,
+                              0.0, 0.0, near + far, -near * far,
+                              0.0, 0.0, 1.0, 0.0;
+    return getOrthogonalProjectionMatrix(left, right, bottom, top, near, far) *
+        perspective2orthogonal;
+}
+
+Matrix4 getViewportMatrix(double x, double y, int w, int h) {
+    Matrix4 viewport;
+    viewport << (double)w/2.0, 0.0, 0.0, (double)w/2.0,
+                0.0, (double)h/2.0, 0.0, (double)h/2.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0;
+    return viewport;
 }
 
 #endif
