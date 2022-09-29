@@ -1,169 +1,186 @@
 #include <vector>
 #include <algorithm>
-#include "tgaimage.h"
 #include "model.h"
 #include "vector.h"
-#include "vec2.h"
 #include "matrix.h"
-#include "geometry.h"
+#include "platform.h"
+#include "graphics.h"
+#include <cstring>
 
-using std::min;
-using std::max;
-using std::cout;
-using std::endl;
+// Window
+static const char *const WindowITLE = "Viewer";
+static const int WINDOW_WIDTH = 800;
+static const int WINDOW_HEIGHT = 800;
 
-const int width  = 800;
-const int height = 800;
-const int depth = 255;
+// Camera
+Camera camera;
+double preX = static_cast<double>(WINDOW_WIDTH) / 2.0;
+double preY = static_cast<double>(WINDOW_HEIGHT) / 2.0;
+bool firstMouse = true;
 
-const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor red   = TGAColor(255,   0,   0, 255);
-const TGAColor green = TGAColor(  0, 255,   0, 255);
+// Timing
+double deltaTime = 0.0;
+double preTime = 0.0;
 
 Model* model = nullptr;
-double* zbuffer = nullptr;
-Vector3 camera(1.0, 1.0, 3.0);
-Vector3 center(0.0, 0.0, 0.0);
-Vector3 light = unit_vector(Vector3(1.0, -1.0, 1.0));
 
-// Bresenham's line drawing algorithm
-void line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {
-    bool steep = false;
-    if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
-        std::swap(x0, y0);
-        std::swap(x1, y1);
-        steep = true;
+void keyboard_callback(Window* window, double deltaTime);
+
+void mouse_callback(Window* window) {
+    float xpos, ypos;
+    input_query_cursor(window, &xpos, &ypos);
+
+    if (firstMouse)
+    {
+        preX = xpos;
+        preY = ypos;
+        firstMouse = false;
     }
-    if (x0 > x1) {
-        std::swap(x0, x1);
-        std::swap(y0, y1);
-    }
-    int dx = x1 - x0;
-    int dy = y1 - y0;
-    int derror = 2 * std::abs(dy);
-    int error = 0;
-    int y = y0;
-    for (int x = x0; x <= x1; x++) {
-        if (steep) {
-            image.set(y, x, color);
-        } else {
-            image.set(x, y, color);
-        }
-        error += derror;
-        if (error > dx) {
-            y += (y0 < y1) ? 1 : -1;
-            error -= 2 * dx;
-        }
-    }
+
+    float xoffset = xpos - preX;
+    float yoffset = preY - ypos; // reversed since y-coordinates go from bottom to top
+
+    preX = xpos;
+    preY = ypos;
+
+    camera.processMouseMove(xoffset, yoffset);
 }
 
-Vector3 getBarycentricCoord(Vector3 triangle[], vec2 p) {
-    Vector3 coord = cross(Vector3(triangle[1].x() - triangle[0].x(),
-                                  triangle[2].x() - triangle[0].x(),
-                                  triangle[0].x() - p.x()),
-                          Vector3(triangle[1].y() - triangle[0].y(),
-                                  triangle[2].y() - triangle[0].y(),
-                                  triangle[0].y() - p.y()));
-    double u = coord.x() / coord.z();
-    double v = coord.y() / coord.z();
-    return Vector3(u, v, 1.0 - u - v);
-}
-
-// Screen space rasterization
-void rasterizeTriangle(Vector3 triangle[], double zbuffer[], TGAImage& image, TGAColor color) {
-    // Find out the bounding box of current triangle.
-    double xmin = static_cast<double>(image.width() - 1);
-    double ymin = static_cast<double>(image.height() - 1);
-    double xmax = 0, ymax = 0;
-    for (int i = 0; i < 3; i++) {
-        xmin = min(xmin, triangle[i].x());
-        ymin = min(ymin, triangle[i].y());
-        xmax = max(xmax, triangle[i].x());
-        ymax = max(ymax, triangle[i].y());
-    }
-    xmin = max(xmin, 0.0);
-    ymin = max(ymin, 0.0);
-    xmax = min(xmax, static_cast<double>(image.width() - 1));
-    ymax = min(ymax, static_cast<double>(image.height() - 1));
-
-    for (int x = xmin; x <= xmax; x++) {
-        for (int y = ymin; y <= ymax; y++) {
-            Vector3 coord = getBarycentricCoord(triangle, vec2(x, y));
-            if (coord.x() < 0.0 || coord.y() < 0.0 || coord.z() < 0.0) {
-                continue;
-            }
-            // cout << "check point 1" << endl;
-            double z = coord.x() * triangle[0].z() +
-                       coord.y() * triangle[1].z() +
-                       coord.z() * triangle[2].z();
-            int index = y * width + x;
-            // Camera gaze at -z
-            if (zbuffer[index] < z) {
-                // cout << "check point 2" << endl;
-                zbuffer[index] = z;
-                image.set(x, y, color);
-            }
-        }
-    }
-}
-
-Vector3 world2screen(Vector3 v) {
-    return Vector3((v.x() + 1.0) * width / 2.0 + 0.5,
-                   (v.y() + 1.0) * height / 2.0 + 0.5,
-                   v.z());
+void scroll_callback(Window* window, double offset)
+{
+    camera.processMouseScroll(offset);
 }
 
 int main(int argc, char** argv) {
+    platform_initialize();
+
+    // Create window
+    Window* window = window_create(WindowITLE, WINDOW_WIDTH, WINDOW_HEIGHT,
+        200, 100);
+    if (window == nullptr) {
+        std::cerr << "Falied to create window" << std::endl;
+        return -1;
+    }
+    Framebuffer* framebuffer = new Framebuffer(WINDOW_WIDTH, WINDOW_HEIGHT);
+
+    // // 处理输入
+    // callbacks_t callbacks;
+    // memset(&callbacks, 0, sizeof(callbacks_t));
+    // // callbacks.button_callback = button_callback;
+    // callbacks.scroll_callback = scroll_callback;
+    // callbacks.mouse_callback = mouse_callback;
+    // input_set_callbacks(window, callbacks);
+
+    // Load model
     if (argc == 2) {
         model = new Model(argv[1]);
     } else {
         model = new Model("../obj/african_head.obj");
     }
 
-    zbuffer = new double[width * height];
-    std::fill(zbuffer, zbuffer + width * height,
-        -10000);
+    float preTime = platform_get_time();
+    float printTime = preTime;
+    int num_frames = 0;
+    const int text_size = 500;
+    char screen_text[text_size];
+    int show_num_frames = 0;
+    int show_avg_millis = 0;
+    float refresh_screen_text_timer = 0;
+    const float REFRESH_SCREEN_TEXT_TIME = 0.1;
+    snprintf(screen_text, text_size, "fps: - -, avg: - -ms\n");
 
-    Matrix4 view = getViewMatrix(center, camera, Vector3(0.0, 1.0, 0.0));
-    Matrix4 projection = getPerspectiveProjectionMatrix(-1, 1, -1, 1, 1, -1);
-    Matrix4 viewport = getViewportMatrix(0, 0, width, height);
 
-    TGAImage image(width, height, TGAImage::RGB);
-    for (int i = 0; i < model->nfaces(); i++) {
-        std::vector<int> face = model->face(i);
-        Vector3 worldCoords[3];
-        Vector3 screenCoords[3];
-        // double intensity[3];
-        for (int j = 0; j < 3; j++) {
-            Vector3 v = model->vert(face[j]);
-            worldCoords[j] = v;
-            Vector4 v4 = viewport * homodiv(projection * view * Vector4(v));
-            screenCoords[j] = Vector3(v4[0], v4[1], v4[2]);
-            // screenCoords[j] = world2screen(v);
+    while (!window_should_close(window)) {
+        float curTime = platform_get_time();
+        double deltaTime = curTime - preTime;
+
+        // 测试输入
+        keyboard_callback(window, deltaTime);
+        mouse_callback(window);
+
+        // 计算变换矩阵
+        Matrix4 view = getViewMatrix(camera);
+        Matrix4 projection = getPerspectiveMatrix(radians(camera.zoom),
+            static_cast<double>(WINDOW_WIDTH) / static_cast<double>(WINDOW_HEIGHT),
+            -0.1, -100);
+        Matrix4 viewport = getViewportMatrix(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+        // 计算帧率和耗时
+        num_frames += 1;
+        if (curTime - printTime >= 1) {
+            int sum_millis = (int)((curTime - printTime) * 1000);
+            int avg_millis = sum_millis / num_frames;
+
+            show_num_frames = num_frames;
+            show_avg_millis = avg_millis;
+            num_frames = 0;
+            printTime = curTime;
         }
-        rasterizeTriangle(screenCoords, zbuffer, image,
-            TGAColor(rand() % 255, rand() % 255, rand() % 255, 255));
+        preTime = curTime;
+
+        for (int i = 0; i < model->nfaces(); i++) {
+            std::vector<int> face = model->face(i);
+            Vector3 worldCoords[3];
+            Vector3 screenCoords[3];
+            // double intensity[3];
+            for (int j = 0; j < 3; j++) {
+                Vector3 v = model->vert(face[j]);
+                worldCoords[j] = v;
+                Vector4 v4 = viewport * homodiv(view * Vector4(v));
+                screenCoords[j] = Vector3(v4[0], v4[1], v4[2]);
+            }
+            rasterizeTriangle(screenCoords, framebuffer,
+                Vector4(random_double(), random_double(), random_double(), 1.0));
+        }
+
+        window_draw_buffer(window, framebuffer);
+
+        //更新显示文本信息
+        refresh_screen_text_timer += deltaTime;
+        if (refresh_screen_text_timer > REFRESH_SCREEN_TEXT_TIME)
+        {
+            snprintf(screen_text, text_size, "");
+
+            char line[50] = "";
+
+            snprintf(line, 50, "fps: %3d, avg: %3d ms\n\n", show_num_frames, show_avg_millis);
+            strcat(screen_text, line);
+
+            window_draw_text(window, screen_text);
+            refresh_screen_text_timer -= REFRESH_SCREEN_TEXT_TIME;
+        }
+
+        framebuffer->clearColor(Color(0, 0, 0, 1));
+        framebuffer->clearDepth(-10000);
+
+        input_poll_events();
     }
 
-    // image.flip_vertically();
-    image.write_tga_file("../images/5_moving_camera.tga");
+    window_destroy(window);
+    delete framebuffer;
     delete model;
 
-    // Matrix4 a, b;
-    // a << 1,2, 3, 4,
-    //      5,   6, 7, 8,
-    //      9, 10 , 11, 12, 13,
-    //      14,15,   16;
-    // // b << 1, 1, 1, 1,
-    // //     2, 1, 2, 2,
-    // //     3, 1, 3, 3,
-    // //     4, 1, 4, 4;
-    // Vector4 c(1.0, 1.0, 1.0, 1.0);
-    // std::cout << a;
-    // // std::cout << b;
-    // // std::cout << a * b;
-    // cout << c;
-    // cout << a * c;
-
     return 0;
+}
+
+void keyboard_callback(Window* window, double deltaTime)
+{
+    if (inputKeyPressed(window, KEY_A)) {
+        camera.processKeyboard(LEFT, deltaTime);
+    }
+    if (inputKeyPressed(window, KEY_D)) {
+        camera.processKeyboard(RIGHT, deltaTime);
+    }
+    if (inputKeyPressed(window, KEY_W)) {
+        camera.processKeyboard(FORWARD, deltaTime);
+    }
+    if (inputKeyPressed(window, KEY_S)) {
+        camera.processKeyboard(BACKWARD, deltaTime);
+    }
+    // if (inputKeyPressed(window, KEY_Q)) {
+    //     camera.processKeyboard(DOWNWARD, deltaTime);
+    // }
+    // if (inputKeyPressed(window, KEY_E)) {
+    //     camera.processKeyboard(UPWARD, deltaTime);
+    // }
 }
