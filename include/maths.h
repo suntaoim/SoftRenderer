@@ -19,22 +19,22 @@ const double pi = 3.1415926535897932385;
 
 // Utility Functions
 
-inline double degrees_to_radians(double degrees) {
+inline double radians(double degrees) {
     return degrees * pi / 180.0;
 }
 
+// Returen a random real in [0,1)
 inline double random_double() {
-    // Returens a random real in [0,1)
     return rand() / (RAND_MAX + 1.0);
 }
 
+// Returen a random in [min, max)
 inline double random_double(double min, double max) {
-    // Returens a random in [min, max)
     return min + random_double() * (max - min);
 }
 
+// Return a random integer in [min,max]
 inline int random_int(int min, int max) {
-    // Returns a random integer in [min,max].
     return static_cast<int>(random_double(min, max + 1));
 }
 
@@ -42,6 +42,10 @@ inline double clamp(double x, double min, double max) {
     if (x < min) return min;
     if (x > max) return max;
     return x;
+}
+
+inline unsigned char float_to_uchar(double value) {
+    return static_cast<unsigned char>(value * 255);
 }
 
 #endif
