@@ -1,52 +1,57 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#include <cmath>
 #include <iostream>
-#include "math.h"
+#include "maths.h"
 
 using std::sqrt;
 
-class Vector3 {
+class Vector2 {
 public:
-    double e[3];
+    double x;
+    double y;
 public:
-    Vector3() : e{0.0, 0.0, 0.0} {}
-    Vector3(double e0, double e1, double e2) : e{e0, e1, e2} {}
-    // Vector3(const Vector4& v) {
-    //     for (int i = 0; i < 3; i++) {
-    //         e[i] = v[i] / v[3];
-    //     }
-    // }
+    Vector2() : x(0.0), y(0.0) {}
+    Vector2(double _x, double _y) : x(_x), y(_y) {}
 
-    double x() const {return e[0];}
-    double y() const {return e[1];}
-    double z() const {return e[2];}
+    Vector2 operator-() const {return Vector2(-x, -y);}
+    double operator[](int i) const {
+        switch (i) {
+            case 0: return x;
+            case 1: return y;
+            default:
+                std::cerr << "Index beyond the scope." << std::endl;
+                exit(1);
+        }
+    }
+    double &operator[](int i) {
+        switch (i) {
+            case 0: return x;
+            case 1: return y;
+            default:
+                std::cerr << "Index beyond the scope." << std::endl;
+                exit(1);
+        }
+    }
 
-    Vector3 operator-() const {return Vector3(-e[0], -e[1], -e[2]);}
-    double operator[](int i) const {return e[i];}
-    double &operator[](int i) {return e[i];}
-
-    Vector3 &operator+=(const Vector3 &v) {
-        e[0] += v.e[0];
-        e[1] += v.e[1];
-        e[2] += v.e[2];
+    Vector2 &operator+=(const Vector2 &v) {
+        x += v.x;
+        y += v.y;
         return *this;
     }
 
-    Vector3 &operator*=(const double t) {
-        e[0] *= t;
-        e[1] *= t;
-        e[2] *= t;
+    Vector2 &operator*=(const double t) {
+        x *= t;
+        y *= t;
         return *this;
     }
 
-    Vector3 &operator/=(const double t) {
+    Vector2 &operator/=(const double t) {
         return *this *= 1/t;
     }
 
     double length_squared() const {
-        return e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
+        return x*x + y*y;
     }
 
     double length() const {
@@ -56,36 +61,143 @@ public:
     bool near_zero() const {
         // Return true if the vector is close to zero in all dimensions.
         const auto s = 1e-8;
-        return (fabs(e[0]) < s) && (fabs(e[1]) < s) && (fabs(e[2]) < s);
+        return (fabs(x) < s) && (fabs(y) < s);
     }
 };
 
-// Type aliases for Vector3
-using point3 = Vector3;    // 3D point
-// using color = Vector3;     // RGB color
-// typedef Vector3 point3;
-// typedef Vector3 color;
+using Point2 = Vector2;
 
-// Vector3 Utility Functions
+inline std::ostream &operator<<(std::ostream &out, const Vector2 &v) {
+    return out << v.x << " " << v.y << std::endl;
+}
+
+inline Vector2 operator+(const Vector2 &u, const Vector2 &v) {
+    return Vector2(u.x + v.x, u.y + v.y);
+}
+
+inline Vector2 operator-(const Vector2 &u, const Vector2 &v) {
+    return Vector2(u.x - v.x, u.y - v.y);
+}
+
+inline Vector2 operator*(const Vector2 &u, const Vector2 &v) {
+    return Vector2(u.x * v.x, u.y * v.y);
+}
+
+inline Vector2 operator*(double t, const Vector2 &v) {
+    return Vector2(t * v.x, t * v.y);
+}
+
+inline Vector2 operator*(const Vector2 &v, double t) {
+    return t * v;
+}
+
+inline Vector2 operator/(Vector2 v, double t) {
+    return (1/t) * v;
+}
+
+inline double dot(const Vector2 &u, const Vector2 &v) {
+    return u.x * v.x + u.y * v.y;
+}
+
+inline double cross(const Vector2 &u, const Vector2 &v) {
+    return u.x * v.y - u.y * v.x;
+}
+
+inline Vector2 unit_vector(Vector2 v) {
+    return v / v.length();
+}
+
+class Vector3 {
+public:
+    double x;
+    double y;
+    double z;
+public:
+    Vector3() : x(0.0), y(0.0), z(0.0) {}
+    Vector3(double _x, double _y, double _z) : x(_x), y(_y), z(_z) {}
+
+    Vector3 operator-() const {return Vector3(-x, -y, -z);}
+    double operator[](int i) const {
+        switch (i) {
+            case 0: return x;
+            case 1: return y;
+            case 2: return z;
+            default:
+                std::cerr << "Index beyond the scope." << std::endl;
+                exit(1);
+        }
+    }
+    double &operator[](int i) {
+        switch (i) {
+            case 0: return x;
+            case 1: return y;
+            case 2: return z;
+            default:
+                std::cerr << "Index beyond the scope." << std::endl;
+                exit(1);
+        }
+    }
+
+    Vector3 &operator+=(const Vector3 &v) {
+        x += v.x;
+        y += v.y;
+        z += v.z;
+        return *this;
+    }
+
+    Vector3 &operator-=(const Vector3 &v) {
+        x -= v.x;
+        y -= v.y;
+        z -= v.z;
+        return *this;
+    }
+
+    Vector3 &operator*=(const double t) {
+        x *= t;
+        y *= t;
+        z *= t;
+        return *this;
+    }
+
+    Vector3 &operator/=(const double t) {
+        return *this *= 1/t;
+    }
+
+    double length_squared() const {
+        return x*x + y*y + z*z;
+    }
+
+    double length() const {
+        return sqrt(length_squared());
+    }
+
+    bool near_zero() const {
+        // Return true if the vector is close to zero in all dimensions.
+        const auto s = 1e-8;
+        return (fabs(x) < s) && (fabs(y) < s) && (fabs(z) < s);
+    }
+};
+
+using Point3 = Vector3;
 
 inline std::ostream &operator<<(std::ostream &out, const Vector3 &v) {
-    return out << v.e[0] << " " << v.e[1] << " " << v.e[2];
+    return out << v.x << " " << v.y << " " << v.z << std::endl;
 }
 
 inline Vector3 operator+(const Vector3 &u, const Vector3 &v) {
-    return Vector3(u.e[0] + v.e[0], u.e[1] + v.e[1], u.e[2] + v.e[2]);
+    return Vector3(u.x + v.x, u.y + v.y, u.z + v.z);
 }
 
 inline Vector3 operator-(const Vector3 &u, const Vector3 &v) {
-    return Vector3(u.e[0] - v.e[0], u.e[1] - v.e[1], u.e[2] - v.e[2]);
+    return Vector3(u.x - v.x, u.y - v.y, u.z - v.z);
 }
 
 inline Vector3 operator*(const Vector3 &u, const Vector3 &v) {
-    return Vector3(u.e[0] * v.e[0], u.e[1] * v.e[1], u.e[2] * v.e[2]);
+    return Vector3(u.x * v.x, u.y * v.y, u.z * v.z);
 }
 
 inline Vector3 operator*(double t, const Vector3 &v) {
-    return Vector3(t * v.e[0], t * v.e[1], t * v.e[2]);
+    return Vector3(t * v.x, t * v.y, t * v.z);
 }
 
 inline Vector3 operator*(const Vector3 &v, double t) {
@@ -97,16 +209,16 @@ inline Vector3 operator/(Vector3 v, double t) {
 }
 
 inline double dot(const Vector3 &u, const Vector3 &v) {
-    return u.e[0] * v.e[0] + u.e[1] * v.e[1] + u.e[2] * v.e[2];
+    return u.x * v.x + u.y * v.y + u.z * v.z;
 }
 
 inline Vector3 cross(const Vector3 &u, const Vector3 &v) {
-    return Vector3(u.e[1] * v.e[2] - u.e[2] * v.e[1],
-                u.e[2] * v.e[0] - u.e[0] * v.e[2],
-                u.e[0] * v.e[1] - u.e[1] * v.e[0]);
+    return Vector3(u.y * v.z - u.z * v.y,
+                u.z * v.x - u.x * v.z,
+                u.x * v.y - u.y * v.x);
 }
 
-inline Vector3 unit_vector(Vector3 v) {
+inline Vector3 normalize(Vector3 v) {
     return v / v.length();
 }
 
@@ -119,84 +231,63 @@ inline static Vector3 random(double min, double max)  {
         random_double(min, max));
 }
 
-// Vector3 random_in_unit_sphere() {
-//     while (true) {
-//         auto p = random(-1, 1);
-//         if (p.length_squared() >= 1) continue;
-//         return p;
-//     }
-// }
-
-// Vector3 random_unit_vector() {
-//     return unit_vector(random_in_unit_sphere());
-// }
-
-// Vector3 random_in_hemisphere(const Vector3& normal) {
-//     Vector3 in_unit_sphere = random_in_unit_sphere();
-//     double cosine = dot(in_unit_sphere, normal);
-//     if (cosine > 0.0)       // In the same hemisphere as the normal
-//         return in_unit_sphere;
-//     else if (cosine < 0.0)  // In the opposite hemisphere of the normal
-//         return -in_unit_sphere;
-//     else return random_in_hemisphere(normal);
-// }
-
-// Vector3 random_cosine_direction() {
-//     double r1 = random_double();
-//     double r2 = random_double();
-
-//     auto phi = 2*pi*r1;
-//     double x = cos(phi) * sqrt(r2);
-//     double y = sin(phi) * sqrt(r2);
-//     double z = sqrt(1-r2);
-
-//     return Vector3(x, y, z);
-// }
-
-// Vector3 random_in_unit_disk() {
-//     while (true) {
-//         auto p = Vector3(random_double(-1, 1), random_double(-1, 1), 0);
-//         if (p.length_squared() >= 1) continue;
-//         return p;
-//     }
-// }
-
-// Vector3 reflect(const Vector3& v, const Vector3& n) {
-//     return v - 2 * dot(v, n) * n;
-// }
-
-// Vector3 refract(const Vector3& uv, const Vector3& n, double etai_over_etat) {
-//     auto cos_theta = fmin(dot(-uv, n), 1.0);
-//     Vector3 r_out_perp = etai_over_etat * (uv + cos_theta * n);
-//     Vector3 r_out_parallel = -sqrt(fabs(1.0 - r_out_perp.length_squared())) * n;
-//     return r_out_perp + r_out_parallel;
-// }
+Vector3 random_in_unit_sphere();
+Vector3 random_unit_vector();
+Vector3 random_in_hemisphere(const Vector3& normal);
+Vector3 random_cosine_direction();
+Vector3 random_in_unit_disk();
+Vector3 reflect(const Vector3& v, const Vector3& n);
+Vector3 refract(const Vector3& uv, const Vector3& n, double etai_over_etat);
 
 class Vector4 {
 public:
-    double e[4];
+    double x;
+    double y;
+    double z;
+    double w;
 public:
-    Vector4() : e{0.0, 0.0, 0.0, 0.0} {}
-    Vector4(double e0, double e1, double e2, double e3) : e{e0, e1, e2, e3} {}
+    Vector4() : x(0.0), y(0.0), z(0.0), w(0.0) {}
+    Vector4(double _x, double _y, double _z, double _w) :
+        x(_x), y(_y), z(_z), w(_w) {}
     Vector4(const Vector3& v) {
-        e[0] = v[0];
-        e[1] = v[1];
-        e[2] = v[2];
-        e[3] = 1.0;
+        x = v.x;
+        y = v.y;
+        z = v.z;
+        w = 1.0;
     }
 
-    double operator [] (int i) const {return e[i];}
-    double &operator[] (int i) {return e[i];}
-
-    friend std::ostream& operator << (std::ostream& out, const Vector4& v);
+    double operator[](int i) const {
+        switch (i) {
+            case 0: return x;
+            case 1: return y;
+            case 2: return z;
+            case 3: return w;
+            default:
+                std::cerr << "Index beyond the scope." << std::endl;
+                exit(1);
+        }
+    }
+    double &operator[](int i) {
+        switch (i) {
+            case 0: return x;
+            case 1: return y;
+            case 2: return z;
+            case 3: return w;
+            default:
+                std::cerr << "Index beyond the scope." << std::endl;
+                exit(1);
+        }
+    }
 };
 
+using Color = Vector4;
+
 inline std::ostream& operator<<(std::ostream& out, const Vector4& v) {
-    return out << v.e[0] << " " << v.e[1] << " " << v.e[2] << " " << v.e[3];
+    return out << v.x << " " << v.y << " " << v.z << " " << v.z << std::endl;
 }
 
 inline Vector4 homodiv(const Vector4& v) {
-    return {v[0]/v[3], v[1]/v[3], v[2]/v[3], 1.0};
+    return {v.x/v.w, v.y/v.w, v.z/v.w, 1.0};
 }
 
 #endif
