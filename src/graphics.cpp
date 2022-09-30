@@ -48,53 +48,6 @@ void Framebuffer::clearDepth(float depth) {
     }
 }
 
-// Framebuffer* framebufferCreate(int width, int height) {
-//     assert(width > 0 && height > 0);
-
-//     int colorBufferSize = width * height * 4;
-//     int depthBufferSize = width * height * sizeof(float);
-//     Vector4 defaultColor = {0, 0, 0, 1};
-//     float defaultDepth = -10000;
-
-//     Framebuffer* framebuffer;
-
-//     framebuffer = (Framebuffer*)malloc(sizeof(Framebuffer));
-//     framebuffer->width = width;
-//     framebuffer->height = height;
-//     framebuffer->colorBuffer = (unsigned char*)malloc(colorBufferSize);
-//     framebuffer->depthBuffer = (float*)malloc(depthBufferSize);
-
-//     framebufferClearColor(framebuffer, defaultColor);
-//     framebufferClearDepth(framebuffer, defaultDepth);
-
-//     return framebuffer;
-// }
-
-// void framebufferRelease(Framebuffer *framebuffer) {
-//     free(framebuffer->colorBuffer);
-//     free(framebuffer->depthBuffer);
-//     free(framebuffer);
-// }
-
-// void framebufferClearColor(Framebuffer *framebuffer, Vector4 color) {
-//     int num_pixels = framebuffer->width * framebuffer->height;
-//     int i;
-//     for (i = 0; i < num_pixels; i++) {
-//         framebuffer->colorBuffer[i * 4 + 0] = float_to_uchar(color.x);
-//         framebuffer->colorBuffer[i * 4 + 1] = float_to_uchar(color.y);
-//         framebuffer->colorBuffer[i * 4 + 2] = float_to_uchar(color.z);
-//         framebuffer->colorBuffer[i * 4 + 3] = float_to_uchar(color.w);
-//     }   
-// }
-
-// void framebufferClearDepth(Framebuffer *framebuffer, float depth) {
-//     int num_pixels = framebuffer->width * framebuffer->height;
-//     int i;
-//     for (i = 0; i < num_pixels; i++) {
-//         framebuffer->depthBuffer[i] = depth;
-//     }
-// }
-
 BoundingBox getBoundingBox(const Vector3 triangle[], int width, int height) {
     double xmin = min(min(triangle[0].x, triangle[1].x), triangle[2].x);
     double ymin = min(min(triangle[0].y, triangle[1].y), triangle[2].y);
@@ -140,35 +93,63 @@ Matrix4 getViewMatrix(const Camera& camera) {
     return rotate * translate;
 }
 
+/**
+ * @brief Get the Orthographic Matrix object
+ * translate = 1.0, 0.0, 0.0, -(left + right)/2.0,
+ *             0.0, 1.0, 0.0, -(bottom + top)/2.0,
+ *             0.0, 0.0, 1.0, -(zNear + zFar)/2.0,
+ *             0.0, 0.0, 0.0, 1.0
+ * scale = 2.0/(right - left), 0.0, 0.0, 0.0,
+ *         0.0, 2.0/(top - bottom), 0.0, 0.0,
+ *         0.0, 0.0, 2.0/(zNear - zFar), 0.0,
+ *         0.0, 0.0, 0.0, 1.0
+ * ortho = scale * translate
+ * @param fovy 
+ * @param aspect 
+ * @param zNear 
+ * @param zFar 
+ * @return Matrix4 
+ */
 Matrix4 getOrthographicMatrix(double fovy, double aspect, double zNear, double zFar) {
-    double top = tan(radians(fovy / 2.0)) * zNear;
-    double bottom = -top;
+    double top = tan(radians(fovy/2.0)) * -zNear;
     double right = aspect * top;
-    double left = -right;
+    double zRange = zNear - zFar;
 
-    Matrix4 translate, scale;
-    translate << 1.0, 0.0, 0.0, -(left + right)/2.0,
-                 0.0, 1.0, 0.0, -(bottom + top)/2.0,
-                 0.0, 0.0, 1.0, -(zNear + zFar)/2.0,
-                 0.0, 0.0, 0.0, 1.0;
-    scale << 2.0/(right - left), 0.0, 0.0, 0.0,
-             0.0, 2.0/(top - bottom), 0.0, 0.0,
-             0.0, 0.0, 2.0/(zNear - zFar), 0.0,
+    Matrix4 ortho;
+    ortho << 1.0/right, 0.0, 0.0, 0.0,
+             0.0, 1.0/right, 0.0, 0.0,
+             0.0, 0.0, 2/zRange, -(zNear + zFar)/zRange,
              0.0, 0.0, 0.0, 1.0;
-    return scale * translate;
+    return ortho;
 }
 
+/**
+ * @brief Get the Perspective Matrix object
+ * persp2ortho = zNear, 0.0, 0.0, 0.0,
+ *               0.0, zNear, 0.0, 0.0,
+ *               0.0, 0.0, zNear + zFar, -zNear * zFar,
+ *               0.0, 0.0, 1.0, 0.0
+ * persp = ortho * persp2ortho
+ * @param fovy 
+ * @param aspect 
+ * @param zNear 
+ * @param zFar 
+ * @return Matrix4 
+ */
 Matrix4 getPerspectiveMatrix(double fovy, double aspect, double zNear, double zFar) {
-    Matrix4 persp2ortho;
-    persp2ortho << zNear, 0.0, 0.0, 0.0,
-                   0.0, zNear, 0.0, 0.0,
-                   0.0, 0.0, zNear + zFar, -zNear * zFar,
-                   0.0, 0.0, 1.0, 0.0;
-    return getOrthographicMatrix(fovy, aspect, zNear, zFar) *
-        persp2ortho;
+    double top = tan(radians(fovy/2.0)) * -zNear;
+    double right = aspect * top;
+    double zRange = zNear - zFar;
+
+    Matrix4 persp;
+    persp << zNear/right, 0.0, 0.0, 0.0,
+             0.0, zNear/top, 0.0, 0.0,
+             0.0, 0.0, (zNear + zFar)/zRange, -(2.0 * zNear * zFar)/zRange,
+             0.0, 0.0, 1.0, 0.0;
+    return persp;
 }
 
-Matrix4 getViewportMatrix(double x, double y, int w, int h) {
+Matrix4 getViewportMatrix(int w, int h) {
     Matrix4 viewport;
     viewport << (double)w/2.0, 0.0, 0.0, (double)w/2.0,
                 0.0, (double)h/2.0, 0.0, (double)h/2.0,

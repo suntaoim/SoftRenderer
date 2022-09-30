@@ -44,7 +44,7 @@ Matrix4 getOrthographicMatrix(double fovY, double aspectRatio, double near,
     double far);
 Matrix4 getPerspectiveMatrix(double fovY, double aspectRatio, double near,
     double far);
-Matrix4 getViewportMatrix(double x, double y, int w, int h);
+Matrix4 getViewportMatrix(int w, int h);
 
 // Bresenham's line drawing algorithm
 // void line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {

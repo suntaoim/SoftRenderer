@@ -25,31 +25,8 @@ double preTime = 0.0;
 Model* model = nullptr;
 
 void keyboard_callback(Window* window, double deltaTime);
-
-void mouse_callback(Window* window) {
-    float xpos, ypos;
-    input_query_cursor(window, &xpos, &ypos);
-
-    if (firstMouse)
-    {
-        preX = xpos;
-        preY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - preX;
-    float yoffset = preY - ypos; // reversed since y-coordinates go from bottom to top
-
-    preX = xpos;
-    preY = ypos;
-
-    camera.processMouseMove(xoffset, yoffset);
-}
-
-void scroll_callback(Window* window, double offset)
-{
-    camera.processMouseScroll(offset);
-}
+void mouse_callback(Window* window);
+void scroll_callback(Window* window, double offset);
 
 int main(int argc, char** argv) {
     platform_initialize();
@@ -103,7 +80,7 @@ int main(int argc, char** argv) {
         Matrix4 projection = getPerspectiveMatrix(radians(camera.zoom),
             static_cast<double>(WINDOW_WIDTH) / static_cast<double>(WINDOW_HEIGHT),
             -0.1, -100);
-        Matrix4 viewport = getViewportMatrix(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+        Matrix4 viewport = getViewportMatrix(WINDOW_WIDTH, WINDOW_HEIGHT);
 
         // 计算帧率和耗时
         num_frames += 1;
@@ -126,7 +103,7 @@ int main(int argc, char** argv) {
             for (int j = 0; j < 3; j++) {
                 Vector3 v = model->vert(face[j]);
                 worldCoords[j] = v;
-                Vector4 v4 = viewport * homodiv(view * Vector4(v));
+                Vector4 v4 = viewport * homodiv(projection * view * Vector4(v));
                 screenCoords[j] = Vector3(v4[0], v4[1], v4[2]);
             }
             rasterizeTriangle(screenCoords, framebuffer,
@@ -183,4 +160,29 @@ void keyboard_callback(Window* window, double deltaTime)
     // if (inputKeyPressed(window, KEY_E)) {
     //     camera.processKeyboard(UPWARD, deltaTime);
     // }
+}
+
+void mouse_callback(Window* window) {
+    float xpos, ypos;
+    input_query_cursor(window, &xpos, &ypos);
+
+    if (firstMouse)
+    {
+        preX = xpos;
+        preY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - preX;
+    float yoffset = preY - ypos; // reversed since y-coordinates go from bottom to top
+
+    preX = xpos;
+    preY = ypos;
+
+    camera.processMouseMove(xoffset, yoffset);
+}
+
+void scroll_callback(Window* window, double offset)
+{
+    camera.processMouseScroll(offset);
 }

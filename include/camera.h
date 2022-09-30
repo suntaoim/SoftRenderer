@@ -15,7 +15,7 @@ enum CameraMovement {
 const float YAW = -90.0f;
 const float PITCH = 0.0f;
 const double SPEED = 2.5;
-const float SENSITIVITY = 0.1f;
+const float SENSITIVITY = 0.01f;
 const float ZOOM = 45.0f;
 
 class Camera {
@@ -32,7 +32,7 @@ public:
     double mouseSensitivity;
     float zoom;
 public:
-    Camera(Point3 _position = Point3(0.0, 0.0, 0.0),
+    Camera(Point3 _position = Point3(0.0, 0.0, 100.0),
            Vector3 _worldup = Vector3(0.0, 1.0, 0.0),
            double _yaw = YAW,
            double _pitch = PITCH) :

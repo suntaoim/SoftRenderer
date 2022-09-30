@@ -2,6 +2,7 @@
 #define PLATFORM_H
 
 #include "vector.h"
+#include "image.h"
 
 class Framebuffer {
 public:
@@ -14,12 +15,6 @@ public:
     void clearColor(const Vector4& color);
     void clearDepth(float depth);
 };
-
-/* framebuffer management */
-// Framebuffer *framebufferCreate(int width, int height);
-// void framebufferRelease(Framebuffer *framebuffer);
-// void framebufferClearColor(Framebuffer *framebuffer, Vector4 color);
-// void framebufferClearDepth(Framebuffer *framebuffer, float depth);
 
 using Window = struct Window;
 typedef enum {KEY_A, KEY_D, KEY_S, KEY_W, KEY_SPACE, KEY_NUM} keycode_t;
