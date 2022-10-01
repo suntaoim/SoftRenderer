@@ -5,7 +5,7 @@
 
 /* framebuffer blitting */
 
-void private_blit_bgr(framebuffer_t *src, image_t *dst) {
+void private_blit_bgr(Framebuffer *src, image_t *dst) {
     int width = dst->width;
     int height = dst->height;
     int r, c;
@@ -18,7 +18,7 @@ void private_blit_bgr(framebuffer_t *src, image_t *dst) {
             int flipped_r = height - 1 - r;
             int src_index = (r * width + c) * 4;
             int dst_index = (flipped_r * width + c) * 4;
-            unsigned char *src_pixel = &src->color_buffer[src_index];
+            unsigned char *src_pixel = &src->colorBuffer[src_index];
             unsigned char *dst_pixel = &dst->ldr_buffer[dst_index];
             dst_pixel[0] = src_pixel[2];  /* blue */
             dst_pixel[1] = src_pixel[1];  /* green */
@@ -27,7 +27,7 @@ void private_blit_bgr(framebuffer_t *src, image_t *dst) {
     }
 }
 
-void private_blit_rgb(framebuffer_t *src, image_t *dst) {
+void private_blit_rgb(Framebuffer *src, image_t *dst) {
     int width = dst->width;
     int height = dst->height;
     int r, c;
@@ -40,7 +40,7 @@ void private_blit_rgb(framebuffer_t *src, image_t *dst) {
             int flipped_r = height - 1 - r;
             int src_index = (r * width + c) * 4;
             int dst_index = (flipped_r * width + c) * 4;
-            unsigned char *src_pixel = &src->color_buffer[src_index];
+            unsigned char *src_pixel = &src->colorBuffer[src_index];
             unsigned char *dst_pixel = &dst->ldr_buffer[dst_index];
             dst_pixel[0] = src_pixel[0];  /* red */
             dst_pixel[1] = src_pixel[1];  /* green */

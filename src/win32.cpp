@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
-#include <string.h>
+#include <cstring>
 #include <direct.h>
 #include <windows.h>
 #include "graphics.h"
@@ -9,9 +9,9 @@
 #include "platform.h"
 #include "private.h"
 
-struct window {
+struct Window {
     HWND handle;
-    HDC memory_dc;
+    HDC memoryDC;
     image_t *surface;
     /* common data */
     int should_close;
@@ -19,6 +19,10 @@ struct window {
     char buttons[BUTTON_NUM];
     callbacks_t callbacks;
     void *userdata;
+
+    float text_width;
+    float text_height;
+    HWND text_handle;
 };
 
 /* platform initialization */
@@ -37,7 +41,7 @@ static const char *const WINDOW_ENTRY_NAME = "Entry";
  * for virtual-key codes, see
  * https://docs.microsoft.com/en-us/windows/desktop/inputdev/virtual-key-codes
  */
-static void handle_key_message(window_t *window, WPARAM virtual_key,
+static void handle_key_message(Window *window, WPARAM virtual_key,
                                char pressed) {
     keycode_t key;
     switch (virtual_key) {
@@ -56,7 +60,7 @@ static void handle_key_message(window_t *window, WPARAM virtual_key,
     }
 }
 
-static void handle_button_message(window_t *window, button_t button,
+static void handle_button_message(Window *window, button_t button,
                                   char pressed) {
     window->buttons[button] = pressed;
     if (window->callbacks.button_callback) {
@@ -64,7 +68,7 @@ static void handle_button_message(window_t *window, button_t button,
     }
 }
 
-static void handle_scroll_message(window_t *window, float offset) {
+static void handle_scroll_message(Window *window, float offset) {
     if (window->callbacks.scroll_callback) {
         window->callbacks.scroll_callback(window, offset);
     }
@@ -72,7 +76,7 @@ static void handle_scroll_message(window_t *window, float offset) {
 
 static LRESULT CALLBACK process_message(HWND hWnd, UINT uMsg,
                                         WPARAM wParam, LPARAM lParam) {
-    window_t *window = (window_t*)GetProp(hWnd, WINDOW_ENTRY_NAME);
+    Window *window = (Window*)GetProp(hWnd, WINDOW_ENTRY_NAME);
     if (window == NULL) {
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     } else if (uMsg == WM_CLOSE) {
@@ -190,21 +194,21 @@ static HWND create_window(const char *title_, int width, int height) {
  * https://docs.microsoft.com/en-us/windows/desktop/gdi/memory-device-contexts
  */
 static void create_surface(HWND handle, int width, int height,
-                           image_t **out_surface, HDC *out_memory_dc) {
+                           image_t **out_surface, HDC *out_memoryDC) {
     BITMAPINFOHEADER bi_header;
     HBITMAP dib_bitmap;
     HBITMAP old_bitmap;
-    HDC window_dc;
-    HDC memory_dc;
+    HDC windowDC;
+    HDC memoryDC;
     image_t *surface;
 
     surface = image_create(width, height, 4, FORMAT_LDR);
     free(surface->ldr_buffer);
     surface->ldr_buffer = NULL;
 
-    window_dc = GetDC(handle);
-    memory_dc = CreateCompatibleDC(window_dc);
-    ReleaseDC(handle, window_dc);
+    windowDC = GetDC(handle);
+    memoryDC = CreateCompatibleDC(windowDC);
+    ReleaseDC(handle, windowDC);
 
     memset(&bi_header, 0, sizeof(BITMAPINFOHEADER));
     bi_header.biSize = sizeof(BITMAPINFOHEADER);
@@ -213,44 +217,52 @@ static void create_surface(HWND handle, int width, int height,
     bi_header.biPlanes = 1;
     bi_header.biBitCount = 32;
     bi_header.biCompression = BI_RGB;
-    dib_bitmap = CreateDIBSection(memory_dc, (BITMAPINFO*)&bi_header,
+    dib_bitmap = CreateDIBSection(memoryDC, (BITMAPINFO*)&bi_header,
                                   DIB_RGB_COLORS, (void**)&surface->ldr_buffer,
                                   NULL, 0);
     assert(dib_bitmap != NULL);
-    old_bitmap = (HBITMAP)SelectObject(memory_dc, dib_bitmap);
+    old_bitmap = (HBITMAP)SelectObject(memoryDC, dib_bitmap);
     DeleteObject(old_bitmap);
 
     *out_surface = surface;
-    *out_memory_dc = memory_dc;
+    *out_memoryDC = memoryDC;
 }
 
-window_t *window_create(const char *title, int width, int height) {
-    window_t *window;
+Window *window_create(const char *title, int width, int height, int text_width, int text_height) {
+    Window *window;
     HWND handle;
     image_t *surface;
-    HDC memory_dc;
+    HDC memoryDC;
+    HWND text_handle;
 
     assert(g_initialized && width > 0 && height > 0);
 
     handle = create_window(title, width, height);
-    create_surface(handle, width, height, &surface, &memory_dc);
+    text_handle = CreateWindow(TEXT("static"), TEXT("static"), WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+        0, 0, text_width, text_height, handle, HMENU(21), GetModuleHandle(NULL), NULL);
+    SetBkColor(GetDC(text_handle), RGB(0, 0, 0));
+    SetTextColor(GetDC(text_handle), RGB(255, 0, 0));
+    create_surface(handle, width, height, &surface, &memoryDC);
 
-    window = (window_t*)malloc(sizeof(window_t));
-    memset(window, 0, sizeof(window_t));
+    window = (Window*)malloc(sizeof(Window));
+    memset(window, 0, sizeof(Window));
     window->handle = handle;
-    window->memory_dc = memory_dc;
+    window->memoryDC = memoryDC;
     window->surface = surface;
+    window->text_width = text_width;
+    window->text_height = text_height;
+    window->text_handle = text_handle;
 
     SetProp(handle, WINDOW_ENTRY_NAME, window);
     ShowWindow(handle, SW_SHOW);
     return window;
 }
 
-void window_destroy(window_t *window) {
+void window_destroy(Window *window) {
     ShowWindow(window->handle, SW_HIDE);
     RemoveProp(window->handle, WINDOW_ENTRY_NAME);
 
-    DeleteDC(window->memory_dc);
+    DeleteDC(window->memoryDC);
     DestroyWindow(window->handle);
 
     window->surface->ldr_buffer = NULL;
@@ -258,31 +270,45 @@ void window_destroy(window_t *window) {
     free(window);
 }
 
-int window_should_close(window_t *window) {
+int window_should_close(Window *window) {
     return window->should_close;
 }
 
-void window_set_userdata(window_t *window, void *userdata) {
+void window_set_userdata(Window *window, void *userdata) {
     window->userdata = userdata;
 }
 
-void *window_get_userdata(window_t *window) {
+void *window_get_userdata(Window *window) {
     return window->userdata;
 }
 
-static void present_surface(window_t *window) {
-    HDC window_dc = GetDC(window->handle);
-    HDC memory_dc = window->memory_dc;
+static void presentSurface(Window *window) {
+    HDC windowDC = GetDC(window->handle);
+    HDC memoryDC = window->memoryDC;
     image_t *surface = window->surface;
     int width = surface->width;
     int height = surface->height;
-    BitBlt(window_dc, 0, 0, width, height, memory_dc, 0, 0, SRCCOPY);
-    ReleaseDC(window->handle, window_dc);
+    BitBlt(windowDC, 0, 0, width, height, memoryDC, 0, 0, SRCCOPY);
+    ReleaseDC(window->handle, windowDC);
 }
 
-void window_draw_buffer(window_t *window, framebuffer_t *buffer) {
+void window_draw_buffer(Window *window, Framebuffer *buffer) {
     private_blit_bgr(buffer, window->surface);
-    present_surface(window);
+    presentSurface(window);
+}
+
+void window_draw_text(Window* window, char* text) {
+#ifdef UNICODE
+    wchar_t* wc;
+    int len = MultiByteToWideChar(CP_ACP, 0, text, strlen(text), NULL, 0);
+    wc = new wchar_t[len + 1];
+    MultiByteToWideChar(CP_ACP, 0, text, strlen(text), wc, len);
+    wc[len] = '\0';
+    SetWindowText(window->text_handle, wc);
+    delete[] wc;
+#else
+    SetWindowText(window->text_handle, text);
+#endif // !UNICODE
 }
 
 /* input related functions */
@@ -295,17 +321,17 @@ void input_poll_events(void) {
     }
 }
 
-int input_key_pressed(window_t *window, keycode_t key) {
+int inputKeyPressed(Window *window, keycode_t key) {
     assert(key >= 0 && key < KEY_NUM);
     return window->keys[key];
 }
 
-int input_button_pressed(window_t *window, button_t button) {
+int input_button_pressed(Window *window, button_t button) {
     assert(button >= 0 && button < BUTTON_NUM);
     return window->buttons[button];
 }
 
-void input_query_cursor(window_t *window, float *xpos, float *ypos) {
+void input_query_cursor(Window *window, float *xpos, float *ypos) {
     POINT point;
     GetCursorPos(&point);
     ScreenToClient(window->handle, &point);
@@ -313,7 +339,7 @@ void input_query_cursor(window_t *window, float *xpos, float *ypos) {
     *ypos = (float)point.y;
 }
 
-void input_set_callbacks(window_t *window, callbacks_t callbacks) {
+void input_set_callbacks(Window *window, callbacks_t callbacks) {
     window->callbacks = callbacks;
 }
 
