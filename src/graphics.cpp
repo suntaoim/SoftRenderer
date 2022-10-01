@@ -169,24 +169,35 @@ Matrix4 getViewportMatrix(int w, int h) {
 //     return vec3_new(x, y, z);
 // }
 
-void rasterizeTriangle(Vector3 triangle[], Framebuffer* framebuffer, const Vector4& color) {
+void rasterizeTriangle(Vector3 positions[], Vector2 texcoords[], Image* texture,
+const Light& light, Framebuffer* framebuffer) {
     // Find out the bounding box of current triangle.
-    BoundingBox box = getBoundingBox(triangle, framebuffer->width,
+    BoundingBox box = getBoundingBox(positions, framebuffer->width,
         framebuffer->height);
 
     for (int x = box.minimum.x; x <= box.maximum.x; x++) {
         for (int y = box.minimum.y; y <= box.maximum.y; y++) {
-            Vector3 coord = getBarycentricCoord(triangle, Vector2(x, y));
+            Vector3 coord = getBarycentricCoord(positions, Vector2(x, y));
             if (coord.x < 0.0 || coord.y < 0.0 || coord.z < 0.0) {
                 continue;
             }
-            double z = coord.x * triangle[0].z +
-                       coord.y * triangle[1].z +
-                       coord.z * triangle[2].z;
+            double z = coord.x * positions[0].z +
+                       coord.y * positions[1].z +
+                       coord.z * positions[2].z;
+            double u = coord.x * texcoords[0].x +
+                       coord.y * texcoords[1].x +
+                       coord.z * texcoords[2].x;
+            double v = coord.x * texcoords[0].y +
+                       coord.y * texcoords[1].y +
+                       coord.z * texcoords[2].y;
+            // std::cout << "u = " << u << ", v = " << v << std::endl;
             int index = y * framebuffer->width + x;
             // Camera gaze at -z
             if (framebuffer->depthBuffer[index] < z) {
                 framebuffer->depthBuffer[index] = z;
+
+                Vector3 color = texture->sample(u, v) * light.color;
+
                 framebuffer->colorBuffer[index * 4 + 0] = float_to_uchar(color.x);
                 framebuffer->colorBuffer[index * 4 + 1] = float_to_uchar(color.y);
                 framebuffer->colorBuffer[index * 4 + 2] = float_to_uchar(color.z);
@@ -195,7 +206,36 @@ void rasterizeTriangle(Vector3 triangle[], Framebuffer* framebuffer, const Vecto
     }
 }
 
-
+// Bresenham's line drawing algorithm
+// void line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {
+//     bool steep = false;
+//     if (std::abs(x0 - x1) < std::abs(y0 - y1)) {
+//         std::swap(x0, y0);
+//         std::swap(x1, y1);
+//         steep = true;
+//     }
+//     if (x0 > x1) {
+//         std::swap(x0, x1);
+//         std::swap(y0, y1);
+//     }
+//     int dx = x1 - x0;
+//     int dy = y1 - y0;
+//     int derror = 2 * std::abs(dy);
+//     int error = 0;
+//     int y = y0;
+//     for (int x = x0; x <= x1; x++) {
+//         if (steep) {
+//             image.set(y, x, color);
+//         } else {
+//             image.set(x, y, color);
+//         }
+//         error += derror;
+//         if (error > dx) {
+//             y += (y0 < y1) ? 1 : -1;
+//             error -= 2 * dx;
+//         }
+//     }
+// }
 
 // typedef struct {int min_x, min_y, max_x, max_y;} bbox_t;
 

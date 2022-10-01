@@ -8,6 +8,8 @@ using std::sqrt;
 // Vector3 Utility Functions
 // -------------------------
 
+Vector3::Vector3(const Vector4& v) : x(v.x), y(v.y), z(v.z) {}
+
 Vector3 random_in_unit_sphere() {
     while (true) {
         auto p = random(-1, 1);

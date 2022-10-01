@@ -10,7 +10,8 @@ private:
     int index;
     void initAssignValue(double value);
 public:
-    Matrix4() {}
+    Matrix4() = default;
+    Matrix4(const Matrix4& m);
     static Matrix4 identity();
 
     // Fill matrix by operator <<

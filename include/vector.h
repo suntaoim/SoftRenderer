@@ -107,6 +107,8 @@ inline Vector2 unit_vector(Vector2 v) {
     return v / v.length();
 }
 
+using Vector4 = class Vector4;
+
 class Vector3 {
 public:
     double x;
@@ -115,6 +117,7 @@ public:
 public:
     Vector3() : x(0.0), y(0.0), z(0.0) {}
     Vector3(double _x, double _y, double _z) : x(_x), y(_y), z(_z) {}
+    Vector3(const Vector4& v);
 
     Vector3 operator-() const {return Vector3(-x, -y, -z);}
     double operator[](int i) const {

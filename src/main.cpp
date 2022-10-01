@@ -1,3 +1,4 @@
+#include <cstring>
 #include <vector>
 #include <algorithm>
 #include "model.h"
@@ -5,7 +6,6 @@
 #include "matrix.h"
 #include "platform.h"
 #include "graphics.h"
-#include <cstring>
 
 // Window
 static const char *const WindowITLE = "Viewer";
@@ -22,7 +22,7 @@ bool firstMouse = true;
 double deltaTime = 0.0;
 double preTime = 0.0;
 
-Model* model = nullptr;
+Model* ourModel = nullptr;
 
 void keyboard_callback(Window* window, double deltaTime);
 void mouse_callback(Window* window);
@@ -49,11 +49,9 @@ int main(int argc, char** argv) {
     // input_set_callbacks(window, callbacks);
 
     // Load model
-    if (argc == 2) {
-        model = new Model(argv[1]);
-    } else {
-        model = new Model("../obj/african_head.obj");
-    }
+    ourModel = new Model("../assets/african_head.obj");
+    Image* texture = new Image("../assets/african_head_diffuse.png");
+    Light light;
 
     float preTime = platform_get_time();
     float printTime = preTime;
@@ -76,11 +74,14 @@ int main(int argc, char** argv) {
         mouse_callback(window);
 
         // 计算变换矩阵
+        Matrix4 model = Matrix4::identity();
         Matrix4 view = getViewMatrix(camera);
         Matrix4 projection = getPerspectiveMatrix(radians(camera.zoom),
             static_cast<double>(WINDOW_WIDTH) / static_cast<double>(WINDOW_HEIGHT),
             -0.1, -100);
         Matrix4 viewport = getViewportMatrix(WINDOW_WIDTH, WINDOW_HEIGHT);
+        Shader shader(model, view, projection, viewport, light, texture,
+            framebuffer);
 
         // 计算帧率和耗时
         num_frames += 1;
@@ -95,21 +96,7 @@ int main(int argc, char** argv) {
         }
         preTime = curTime;
 
-        for (int i = 0; i < model->nfaces(); i++) {
-            std::vector<int> face = model->face(i);
-            Vector3 worldCoords[3];
-            Vector3 screenCoords[3];
-            // double intensity[3];
-            for (int j = 0; j < 3; j++) {
-                Vector3 v = model->vert(face[j]);
-                worldCoords[j] = v;
-                Vector4 v4 = viewport * homodiv(projection * view * Vector4(v));
-                screenCoords[j] = Vector3(v4[0], v4[1], v4[2]);
-            }
-            rasterizeTriangle(screenCoords, framebuffer,
-                Vector4(random_double(), random_double(), random_double(), 1.0));
-        }
-
+        ourModel->draw(shader);
         window_draw_buffer(window, framebuffer);
 
         //更新显示文本信息
@@ -135,7 +122,7 @@ int main(int argc, char** argv) {
 
     window_destroy(window);
     delete framebuffer;
-    delete model;
+    delete ourModel;
 
     return 0;
 }

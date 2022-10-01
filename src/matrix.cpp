@@ -10,6 +10,14 @@ void Matrix4::initAssignValue(double value) {
     index++;
 }
 
+Matrix4::Matrix4(const Matrix4& m) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            e[i][j] = m.e[i][j];
+        }
+    }
+}
+
 Matrix4 Matrix4::identity() {
     Matrix4 I;
     for (int i = 0; i < 4; i++) {
