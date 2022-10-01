@@ -9,6 +9,44 @@
 // #include "maths.h"
 #include "private.h"
 
+Image::Image(const char* filepath) {
+    int componentsPerPixel = bytesPerPixel;
+    data = stbi_load(filepath, &width, &height, &componentsPerPixel,
+        componentsPerPixel);
+    if (!data) {
+        std::cerr << "ERROR: Could not load texture image file '" <<
+            filepath << "'.\n";
+        width = height  = 0;
+    }
+
+    bytesPerLine = bytesPerPixel * width;
+    std::cout << "width = " << width << "height = " << height << std::endl;
+}
+
+Vector3 Image::sample(double u, double v) const {
+    // If we have no texture data, then return solid red as a debugging 
+    // aid.
+    if (!data) {
+        return Vector3(1.0, 0.0, 0.0);
+    }
+
+    // Clamp input texture coordinates to [0,1] x [1,0]
+    u = clamp(u, 0.0, 1.0);
+    v = 1.0 - clamp(v, 0.0, 1.0);   // Flip v to image coordinates
+
+    int i = static_cast<int>(u * static_cast<double>(width));
+    int j = static_cast<int>(v * static_cast<double>(height));
+
+    // Clamp integet mapping, since actual coordinates should be less
+    // than 1.0
+    if (i >= width) i = width - 1;
+    if (j >= height) j = height - 1;
+
+    auto pixel = data + j * bytesPerLine + i * bytesPerPixel;
+    return Vector3(colorScale * pixel[0], colorScale * pixel[1],
+        colorScale * pixel[2]);
+}
+
 /* image creating/releasing */
 
 image_t *image_create(int width, int height, int channels, format_t format) {
