@@ -18,6 +18,15 @@ Matrix4::Matrix4(const Matrix4& m) {
     }
 }
 
+Matrix4::Matrix4(int i) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            e[i][j] = 0.0;
+        }
+        e[i][i] = 1.0;
+    }
+}
+
 Matrix4 Matrix4::identity() {
     Matrix4 I;
     for (int i = 0; i < 4; i++) {

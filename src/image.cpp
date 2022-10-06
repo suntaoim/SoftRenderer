@@ -27,15 +27,17 @@ Vector3 Image::sample(double u, double v) const {
     // If we have no texture data, then return solid red as a debugging 
     // aid.
     if (!data) {
-        return Vector3(1.0, 0.0, 0.0);
+        return Vector3(0.9, 0.9, 0.9);
     }
 
     // Clamp input texture coordinates to [0,1] x [1,0]
     u = clamp(u, 0.0, 1.0);
     v = 1.0 - clamp(v, 0.0, 1.0);   // Flip v to image coordinates
+    // u = u - floor(u);
+    // v = v - floor(v);
 
-    int i = static_cast<int>(u * static_cast<double>(width));
-    int j = static_cast<int>(v * static_cast<double>(height));
+    int i = static_cast<int>(u * static_cast<double>(width - 1));
+    int j = static_cast<int>(v * static_cast<double>(height - 1));
 
     // Clamp integet mapping, since actual coordinates should be less
     // than 1.0
@@ -49,7 +51,7 @@ Vector3 Image::sample(double u, double v) const {
 
 /* image creating/releasing */
 
-image_t *image_create(int width, int height, int channels, format_t format) {
+image_t *imageCreate(int width, int height, int channels, Format format) {
     int num_elems = width * height * channels;
     image_t *image;
 
@@ -61,37 +63,37 @@ image_t *image_create(int width, int height, int channels, format_t format) {
     image->width = width;
     image->height = height;
     image->channels = channels;
-    image->ldr_buffer = NULL;
-    image->hdr_buffer = NULL;
+    image->ldrBuffer = NULL;
+    image->hdrBuffer = NULL;
 
     if (format == FORMAT_LDR) {
         int size = sizeof(unsigned char) * num_elems;
-        image->ldr_buffer = (unsigned char*)malloc(size);
-        memset(image->ldr_buffer, 0, size);
+        image->ldrBuffer = (unsigned char*)malloc(size);
+        memset(image->ldrBuffer, 0, size);
     } else {
         int size = sizeof(float) * num_elems;
-        image->hdr_buffer = (float*)malloc(size);
-        memset(image->hdr_buffer, 0, size);
+        image->hdrBuffer = (float*)malloc(size);
+        memset(image->hdrBuffer, 0, size);
     }
 
     return image;
 }
 
-void image_release(image_t *image) {
-    free(image->ldr_buffer);
-    free(image->hdr_buffer);
+void imageRelease(image_t *image) {
+    free(image->ldrBuffer);
+    free(image->hdrBuffer);
     free(image);
 }
 
-static image_t *load_tga_image(const char *filename);
-static image_t *load_hdr_image(const char *filename);
+static image_t *loadTgaImage(const char *filename);
+static image_t *loadHdrImage(const char *filename);
 
-image_t *image_load(const char *filename) {
-    const char *extension = private_get_extension(filename);
+image_t *imageLoad(const char *filename) {
+    const char *extension = privateGetExtension(filename);
     if (strcmp(extension, "tga") == 0) {
-        return load_tga_image(filename);
+        return loadTgaImage(filename);
     } else if (strcmp(extension, "hdr") == 0) {
-        return load_hdr_image(filename);
+        return loadHdrImage(filename);
     } else {
         assert(0);
         return NULL;
@@ -99,14 +101,14 @@ image_t *image_load(const char *filename) {
 }
 
 static void save_tga_image(image_t *image, const char *filename);
-static void save_hdr_image(image_t *image, const char *filename);
+static void saveHdrImage(image_t *image, const char *filename);
 
 void image_save(image_t *image, const char *filename) {
-    const char *extension = private_get_extension(filename);
+    const char *extension = privateGetExtension(filename);
     if (strcmp(extension, "tga") == 0) {
         save_tga_image(image, filename);
     } else if (strcmp(extension, "hdr") == 0) {
-        save_hdr_image(image, filename);
+        saveHdrImage(image, filename);
     } else {
         assert(0);
     }
@@ -128,12 +130,12 @@ static void swap_floats(float *a, float *b) {
 
 static unsigned char *get_ldr_pixel(image_t *image, int row, int col) {
     int index = (row * image->width + col) * image->channels;
-    return &image->ldr_buffer[index];
+    return &image->ldrBuffer[index];
 }
 
 static float *get_hdr_pixel(image_t *image, int row, int col) {
     int index = (row * image->width + col) * image->channels;
-    return &image->hdr_buffer[index];
+    return &image->hdrBuffer[index];
 }
 
 void image_flip_h(image_t *image) {
@@ -252,13 +254,13 @@ static void load_tga_rle_payload(FILE *file, image_t *image) {
             }
             for (i = 0; i < num_pixels; i++) {
                 for (j = 0; j < image->channels; j++) {
-                    image->ldr_buffer[curr_size++] = pixel[j];
+                    image->ldrBuffer[curr_size++] = pixel[j];
                 }
             }
         } else {                                            /* raw packet */
             for (i = 0; i < num_pixels; i++) {
                 for (j = 0; j < image->channels; j++) {
-                    image->ldr_buffer[curr_size++] = read_byte(file);
+                    image->ldrBuffer[curr_size++] = read_byte(file);
                 }
             }
         }
@@ -266,7 +268,7 @@ static void load_tga_rle_payload(FILE *file, image_t *image) {
     assert(curr_size == num_elems);
 }
 
-static image_t *load_tga_image(const char *filename) {
+static image_t *loadTgaImage(const char *filename) {
     int width, height, channels;
     int is_rle, flip_h, flip_v;
     image_t *image;
@@ -276,11 +278,11 @@ static image_t *load_tga_image(const char *filename) {
     assert(file != NULL);
     read_tga_header(file, &width, &height, &channels,
                     &is_rle, &flip_h, &flip_v);
-    image = image_create(width, height, channels, FORMAT_LDR);
+    image = imageCreate(width, height, channels, FORMAT_LDR);
     if (is_rle) {
         load_tga_rle_payload(file, image);
     } else {
-        read_bytes(file, image->ldr_buffer, get_num_elems(image));
+        read_bytes(file, image->ldrBuffer, get_num_elems(image));
     }
     fclose(file);
 
@@ -333,7 +335,7 @@ static void save_tga_image(image_t *image, const char *filename) {
             }
         }
     } else {
-        write_bytes(file, image->ldr_buffer, get_num_elems(image));
+        write_bytes(file, image->ldrBuffer, get_num_elems(image));
     }
 
     fclose(file);
@@ -423,7 +425,7 @@ static void read_hdr_header(FILE *file, int *width, int *height) {
     UNUSED_VAR(items);
 }
 
-static void read_hdr_flat_scanline(FILE *file, image_t *image, int row) {
+static void readHdrFlatScanline(FILE *file, image_t *image, int row) {
     int i;
     for (i = 0; i < image->width; i++) {
         float *pixel = get_hdr_pixel(image, row, i);
@@ -433,7 +435,7 @@ static void read_hdr_flat_scanline(FILE *file, image_t *image, int row) {
     }
 }
 
-static void read_hdr_rle_scanline(FILE *file, image_t *image, int row) {
+static void readHdrRleScanline(FILE *file, image_t *image, int row) {
     unsigned char *channels[4];
     int i, j;
 
@@ -477,21 +479,21 @@ static void read_hdr_rle_scanline(FILE *file, image_t *image, int row) {
 
 static void read_hdr_scanline(FILE *file, image_t *image, int row) {
     if (image->width < 8 || image->width > 0x7fff) {
-        read_hdr_flat_scanline(file, image, row);
+        readHdrFlatScanline(file, image, row);
     } else {
         unsigned char bytes[4];
         read_bytes(file, bytes, 4);
         if (bytes[0] != 2 || bytes[1] != 2 || bytes[2] & 0x80) {
             fseek(file, -4, SEEK_CUR);
-            read_hdr_flat_scanline(file, image, row);
+            readHdrFlatScanline(file, image, row);
         } else {
             assert(bytes[2] * 256 + bytes[3] == image->width);
-            read_hdr_rle_scanline(file, image, row);
+            readHdrRleScanline(file, image, row);
         }
     }
 }
 
-static image_t *load_hdr_image(const char *filename) {
+static image_t *loadHdrImage(const char *filename) {
     int width, height;
     image_t *image;
     FILE *file;
@@ -500,7 +502,7 @@ static image_t *load_hdr_image(const char *filename) {
     file = fopen(filename, "rb");
     assert(file != NULL);
     read_hdr_header(file, &width, &height);
-    image = image_create(width, height, 3, FORMAT_HDR);
+    image = imageCreate(width, height, 3, FORMAT_HDR);
     for (i = 0; i < height; i++) {
         int row = height - 1 - i;
         read_hdr_scanline(file, image, row);
@@ -510,7 +512,7 @@ static image_t *load_hdr_image(const char *filename) {
     return image;
 }
 
-static void save_hdr_image(image_t *image, const char *filename) {
+static void saveHdrImage(image_t *image, const char *filename) {
     FILE *file;
     int r, c;
 

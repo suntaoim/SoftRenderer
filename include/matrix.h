@@ -12,7 +12,9 @@ private:
 public:
     Matrix4() = default;
     Matrix4(const Matrix4& m);
+    Matrix4(int i);
     static Matrix4 identity();
+    static Matrix4 identity(double n);
 
     // Fill matrix by operator <<
     friend Matrix4& operator , (Matrix4& m, double x);

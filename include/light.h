@@ -2,10 +2,15 @@
 #define LIGHT_H
 
 #include "vector.h"
+#include "matrix.h"
+#include "geometry.h"
+#include "platform.h"
+#include "shader.h"
 
 class Light {
 public:
     Vector4 color;
+    // For shadow mapping
 public:
     Light() : color(1.0, 1.0, 1.0, 1.0) {}
     Light(const Vector4& _color) : color(_color) {}
@@ -14,14 +19,27 @@ public:
 class DirectionalLight : public Light {
 public:
     Vector3 direction;
+    bool enableShdow;
+    VertexShader* vertexShader;
+    Framebuffer* shadowMap;
 public:
-    DirectionalLight() : direction(0.0, 0.0, -1.0) {}
-    DirectionalLight(const Vector4& _color) :
-        Light(_color), direction(0.0, 0.0, -1.0) {}
-    DirectionalLight(const Vector3& _direction) :
-        direction(_direction) {}
-    DirectionalLight(const Vector4& _color, const Vector3& _direction) :
-        Light(_color), direction(_direction) {}
+    // Todo: change direction with input
+    DirectionalLight(bool _enableShdow = false,
+                     const Vector4& _color = Vector4(1.0, 1.0, 1.0, 1.0),
+                     const Vector3& _direction = normalize(Vector3(0.0, -1.0, -1.0))) :
+                     enableShdow(_enableShdow),
+                     Light(_color),
+                     direction(_direction) {
+        if (enableShdow) {
+            Matrix4 model = Matrix4::identity();
+            Matrix4 view = getViewMatrix(-direction, direction,
+                Vector3(0.0, 1.0, 0.0));
+            Matrix4 projection = getOrthographicMatrix(1, 1, 0, -2);
+            // Todo: send in WINODW_HEIGHT and WINDOW_WIDTH
+            vertexShader = new VertexShader(model, view, projection);
+            shadowMap = new Framebuffer(800, 800);
+        }
+    }
 };
 
 class PointLight : public Light {

@@ -5,10 +5,10 @@
 #include "image.h"
 
 /* framebuffer blitting */
-void private_blit_bgr(Framebuffer *source, image_t *target);
-void private_blit_rgb(Framebuffer *source, image_t *target);
+void privateBlitBgr(Framebuffer *source, image_t *target);
+void privateBlitRgb(Framebuffer *source, image_t *target);
 
 /* misc functions */
-const char *private_get_extension(const char *filename);
+const char *privateGetExtension(const char *filename);
 
 #endif

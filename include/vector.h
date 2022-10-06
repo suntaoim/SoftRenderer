@@ -6,6 +6,8 @@
 
 using std::sqrt;
 
+using Vector3 = class Vector3;
+
 class Vector2 {
 public:
     double x;
@@ -13,6 +15,7 @@ public:
 public:
     Vector2() : x(0.0), y(0.0) {}
     Vector2(double _x, double _y) : x(_x), y(_y) {}
+    Vector2(const Vector3& v);
 
     Vector2 operator-() const {return Vector2(-x, -y);}
     double operator[](int i) const {
@@ -68,7 +71,7 @@ public:
 using Point2 = Vector2;
 
 inline std::ostream &operator<<(std::ostream &out, const Vector2 &v) {
-    return out << v.x << " " << v.y << std::endl;
+    return out << v.x << " " << v.y;
 }
 
 inline Vector2 operator+(const Vector2 &u, const Vector2 &v) {
@@ -184,7 +187,7 @@ public:
 using Point3 = Vector3;
 
 inline std::ostream &operator<<(std::ostream &out, const Vector3 &v) {
-    return out << v.x << " " << v.y << " " << v.z << std::endl;
+    return out << v.x << " " << v.y << " " << v.z;
 }
 
 inline Vector3 operator+(const Vector3 &u, const Vector3 &v) {
@@ -286,7 +289,7 @@ public:
 using Color = Vector4;
 
 inline std::ostream& operator<<(std::ostream& out, const Vector4& v) {
-    return out << v.x << " " << v.y << " " << v.z << " " << v.z << std::endl;
+    return out << v.x << " " << v.y << " " << v.z << " " << v.z;
 }
 
 inline Vector4 homodiv(const Vector4& v) {
