@@ -12,11 +12,11 @@ enum CameraMovement {
     DOWNWARD
 };
 
-const float YAW = -90.0f;
-const float PITCH = 0.0f;
-const double SPEED = 2.5;
-const float SENSITIVITY = 0.01f;
-const float ZOOM = 45.0f;
+const double YAW = -90.0;
+const double PITCH = 0.0;
+const double SPEED = 0.05;
+const double SENSITIVITY = 0.2;
+const double ZOOM = 45.0;
 
 class Camera {
 public:
@@ -30,9 +30,9 @@ public:
     double pitch;
     double speed;
     double mouseSensitivity;
-    float zoom;
+    double zoom;
 public:
-    Camera(Point3 _position = Point3(0.0, 0.0, 100.0),
+    Camera(Point3 _position = Point3(0.0, 1.0, 10.0),
            Vector3 _worldup = Vector3(0.0, 1.0, 0.0),
            double _yaw = YAW,
            double _pitch = PITCH) :
@@ -41,7 +41,7 @@ public:
            mouseSensitivity(SENSITIVITY),
            zoom(ZOOM) {
         position = _position;
-        worldup = _worldup;
+        worldup = normalize(_worldup);
         yaw = _yaw;
         pitch = _pitch;
         updateCameraVectors();
@@ -79,16 +79,6 @@ public:
         }
 
         updateCameraVectors();
-    }
-
-    void processMouseScroll(double yoffset) {
-        zoom -= yoffset;
-        if (zoom < 1.0) {
-            zoom = 1.0;
-        }
-        if (zoom > 45.0) {
-            zoom = 45.0;
-        }
     }
 private:
     void updateCameraVectors() {

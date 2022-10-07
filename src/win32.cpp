@@ -13,125 +13,124 @@ struct Window {
     HWND handle;
     HDC memoryDC;
     image_t *surface;
-    /* common data */
-    int should_close;
+    HWND textHandle;
+    float textWidth;
+    float textHeight;
+    /* Common Data */
+    int shouldClose;
     char keys[KEY_NUM];
     char buttons[BUTTON_NUM];
-    callbacks_t callbacks;
-    void *userdata;
-
-    float text_width;
-    float text_height;
-    HWND text_handle;
+    Callbacks callbacks;
+    void* userdata;
 };
 
-/* platform initialization */
+/* Platform Initialization */
 
-static int g_initialized = 0;
+static int initialized = 0;
 
 #ifdef UNICODE
-static const wchar_t *const WINDOW_CLASS_NAME = L"Class";
-static const wchar_t *const WINDOW_ENTRY_NAME = L"Entry";
+static const wchar_t* const WINDOW_CLASS_NAME = L"Class";
+static const wchar_t* const WINDOW_ENTRY_NAME = L"Entry";
 #else
-static const char *const WINDOW_CLASS_NAME = "Class";
-static const char *const WINDOW_ENTRY_NAME = "Entry";
+static const char* const WINDOW_CLASS_NAME = "Class";
+static const char* const WINDOW_ENTRY_NAME = "Entry";
 #endif
 
 /*
- * for virtual-key codes, see
+ * For virtual-key codes, see
  * https://docs.microsoft.com/en-us/windows/desktop/inputdev/virtual-key-codes
  */
-static void handle_key_message(Window *window, WPARAM virtual_key,
-                               char pressed) {
-    keycode_t key;
-    switch (virtual_key) {
+static void handleKeyMessage(Window *window, WPARAM virtualKey, char pressed) {
+    Keycode key;
+    switch (virtualKey) {
         case 'A':      key = KEY_A;     break;
         case 'D':      key = KEY_D;     break;
         case 'S':      key = KEY_S;     break;
         case 'W':      key = KEY_W;     break;
+        case 'Q':      key = KEY_Q;     break;
+        case 'E':      key = KEY_E;     break;
         case VK_SPACE: key = KEY_SPACE; break;
         default:       key = KEY_NUM;   break;
     }
     if (key < KEY_NUM) {
         window->keys[key] = pressed;
-        if (window->callbacks.key_callback) {
-            window->callbacks.key_callback(window, key, pressed);
+        if (window->callbacks.keyCallback) {
+            window->callbacks.keyCallback(window, key, pressed);
         }
     }
 }
 
-static void handle_button_message(Window *window, button_t button,
-                                  char pressed) {
+static void handleButtonMessage(Window *window, Button button, char pressed) {
     window->buttons[button] = pressed;
-    if (window->callbacks.button_callback) {
-        window->callbacks.button_callback(window, button, pressed);
+    if (window->callbacks.buttonCallback) {
+        window->callbacks.buttonCallback(window, button, pressed);
     }
 }
 
-static void handle_scroll_message(Window *window, float offset) {
-    if (window->callbacks.scroll_callback) {
-        window->callbacks.scroll_callback(window, offset);
+static void handleScrollMessage(Window *window, float offset) {
+    if (window->callbacks.scrollCallback) {
+        window->callbacks.scrollCallback(window, offset);
     }
 }
 
-static LRESULT CALLBACK process_message(HWND hWnd, UINT uMsg,
-                                        WPARAM wParam, LPARAM lParam) {
+static LRESULT CALLBACK processMessage(HWND hWnd, UINT uMsg, WPARAM wParam,
+                                       LPARAM lParam) {
     Window *window = (Window*)GetProp(hWnd, WINDOW_ENTRY_NAME);
     if (window == NULL) {
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     } else if (uMsg == WM_CLOSE) {
-        window->should_close = 1;
+        window->shouldClose = 1;
         return 0;
     } else if (uMsg == WM_KEYDOWN) {
-        handle_key_message(window, wParam, 1);
+        handleKeyMessage(window, wParam, 1);
         return 0;
     } else if (uMsg == WM_KEYUP) {
-        handle_key_message(window, wParam, 0);
+        handleKeyMessage(window, wParam, 0);
         return 0;
     } else if (uMsg == WM_LBUTTONDOWN) {
-        handle_button_message(window, BUTTON_L, 1);
+        handleButtonMessage(window, BUTTON_L, 1);
         return 0;
     } else if (uMsg == WM_RBUTTONDOWN) {
-        handle_button_message(window, BUTTON_R, 1);
+        handleButtonMessage(window, BUTTON_R, 1);
         return 0;
     } else if (uMsg == WM_LBUTTONUP) {
-        handle_button_message(window, BUTTON_L, 0);
+        handleButtonMessage(window, BUTTON_L, 0);
         return 0;
     } else if (uMsg == WM_RBUTTONUP) {
-        handle_button_message(window, BUTTON_R, 0);
+        handleButtonMessage(window, BUTTON_R, 0);
         return 0;
     } else if (uMsg == WM_MOUSEWHEEL) {
         float offset = GET_WHEEL_DELTA_WPARAM(wParam) / (float)WHEEL_DELTA;
-        handle_scroll_message(window, offset);
+        handleScrollMessage(window, offset);
         return 0;
     } else {
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
 }
 
-static void register_class(void) {
-    ATOM class_atom;
-    WNDCLASS window_class;
-    window_class.style = CS_HREDRAW | CS_VREDRAW;
-    window_class.lpfnWndProc = process_message;
-    window_class.cbClsExtra = 0;
-    window_class.cbWndExtra = 0;
-    window_class.hInstance = GetModuleHandle(NULL);
-    window_class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
-    window_class.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-    window_class.lpszMenuName = NULL;
-    window_class.lpszClassName = WINDOW_CLASS_NAME;
-    class_atom = RegisterClass(&window_class);
-    assert(class_atom != 0);
-    UNUSED_VAR(class_atom);
+static void registerClass(void) {
+    ATOM classAtom;
+    WNDCLASS windowClass;
+    windowClass.style = CS_HREDRAW | CS_VREDRAW;
+    windowClass.lpfnWndProc = processMessage;
+    windowClass.cbClsExtra = 0;
+    windowClass.cbWndExtra = 0;
+    windowClass.hInstance = GetModuleHandle(NULL);
+    windowClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    windowClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+    windowClass.lpszMenuName = NULL;
+    windowClass.lpszClassName = WINDOW_CLASS_NAME;
+    classAtom = RegisterClass(&windowClass);
+    assert(classAtom != 0);
+    UNUSED_VAR(classAtom);
 }
 
-static void unregister_class(void) {
+static void unregisterClass(void) {
     UnregisterClass(WINDOW_CLASS_NAME, GetModuleHandle(NULL));
 }
 
-static void initialize_path(void) {
+static void initializePath(void) {
 #ifdef UNICODE
     wchar_t path[MAX_PATH];
     GetModuleFileName(NULL, path, MAX_PATH);
@@ -147,22 +146,22 @@ static void initialize_path(void) {
 #endif
 }
 
-void platform_initialize(void) {
-    assert(g_initialized == 0);
-    register_class();
-    initialize_path();
-    g_initialized = 1;
+void platformInitialize(void) {
+    assert(initialized == 0);
+    registerClass();
+    initializePath();
+    initialized = 1;
 }
 
-void platform_terminate(void) {
-    assert(g_initialized == 1);
-    unregister_class();
-    g_initialized = 0;
+void platformTerminate(void) {
+    assert(initialized == 1);
+    unregisterClass();
+    initialized = 0;
 }
 
-/* window related functions */
+/* Window Related Functions */
 
-static HWND create_window(const char *title_, int width, int height) {
+static HWND createWindow(const char *title_, int width, int height) {
     DWORD style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
     RECT rect;
     HWND handle;
@@ -190,95 +189,95 @@ static HWND create_window(const char *title_, int width, int height) {
 }
 
 /*
- * for memory device context, see
+ * For memory device context, see
  * https://docs.microsoft.com/en-us/windows/desktop/gdi/memory-device-contexts
  */
-static void create_surface(HWND handle, int width, int height,
-                           image_t **out_surface, HDC *out_memoryDC) {
-    BITMAPINFOHEADER bi_header;
-    HBITMAP dib_bitmap;
-    HBITMAP old_bitmap;
+static void createSurface(HWND handle, int width, int height,
+                          image_t **outSurface, HDC *outMemoryDC) {
+    BITMAPINFOHEADER biHeader;
+    HBITMAP dibBitmap;
+    HBITMAP oldBitmap;
     HDC windowDC;
     HDC memoryDC;
     image_t *surface;
 
-    surface = image_create(width, height, 4, FORMAT_LDR);
-    free(surface->ldr_buffer);
-    surface->ldr_buffer = NULL;
+    surface = imageCreate(width, height, 4, FORMAT_LDR);
+    free(surface->ldrBuffer);
+    surface->ldrBuffer = NULL;
 
     windowDC = GetDC(handle);
     memoryDC = CreateCompatibleDC(windowDC);
     ReleaseDC(handle, windowDC);
 
-    memset(&bi_header, 0, sizeof(BITMAPINFOHEADER));
-    bi_header.biSize = sizeof(BITMAPINFOHEADER);
-    bi_header.biWidth = width;
-    bi_header.biHeight = -height;  /* top-down */
-    bi_header.biPlanes = 1;
-    bi_header.biBitCount = 32;
-    bi_header.biCompression = BI_RGB;
-    dib_bitmap = CreateDIBSection(memoryDC, (BITMAPINFO*)&bi_header,
-                                  DIB_RGB_COLORS, (void**)&surface->ldr_buffer,
+    memset(&biHeader, 0, sizeof(BITMAPINFOHEADER));
+    biHeader.biSize = sizeof(BITMAPINFOHEADER);
+    biHeader.biWidth = width;
+    biHeader.biHeight = -height;  /* top-down */
+    biHeader.biPlanes = 1;
+    biHeader.biBitCount = 32;
+    biHeader.biCompression = BI_RGB;
+    dibBitmap = CreateDIBSection(memoryDC, (BITMAPINFO*)&biHeader,
+                                  DIB_RGB_COLORS, (void**)&surface->ldrBuffer,
                                   NULL, 0);
-    assert(dib_bitmap != NULL);
-    old_bitmap = (HBITMAP)SelectObject(memoryDC, dib_bitmap);
-    DeleteObject(old_bitmap);
+    assert(dibBitmap != NULL);
+    oldBitmap = (HBITMAP)SelectObject(memoryDC, dibBitmap);
+    DeleteObject(oldBitmap);
 
-    *out_surface = surface;
-    *out_memoryDC = memoryDC;
+    *outSurface = surface;
+    *outMemoryDC = memoryDC;
 }
 
-Window *window_create(const char *title, int width, int height, int text_width, int text_height) {
+Window* windowCreate(const char *title, int width, int height, int textWidth, int textHeight) {
     Window *window;
     HWND handle;
     image_t *surface;
     HDC memoryDC;
-    HWND text_handle;
+    HWND textHandle;
 
-    assert(g_initialized && width > 0 && height > 0);
+    assert(initialized && width > 0 && height > 0);
 
-    handle = create_window(title, width, height);
-    text_handle = CreateWindow(TEXT("static"), TEXT("static"), WS_CHILD | WS_VISIBLE | WS_TABSTOP,
-        0, 0, text_width, text_height, handle, HMENU(21), GetModuleHandle(NULL), NULL);
-    SetBkColor(GetDC(text_handle), RGB(0, 0, 0));
-    SetTextColor(GetDC(text_handle), RGB(255, 0, 0));
-    create_surface(handle, width, height, &surface, &memoryDC);
+    handle = createWindow(title, width, height);
+    textHandle = CreateWindow(TEXT("static"), TEXT("static"), WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+        0, 0, textWidth, textHeight, handle, HMENU(21), GetModuleHandle(NULL), NULL);
+    SetBkColor(GetDC(textHandle), RGB(0, 0, 0));
+    SetTextColor(GetDC(textHandle), RGB(255, 0, 0));
+    createSurface(handle, width, height, &surface, &memoryDC);
 
     window = (Window*)malloc(sizeof(Window));
     memset(window, 0, sizeof(Window));
     window->handle = handle;
     window->memoryDC = memoryDC;
     window->surface = surface;
-    window->text_width = text_width;
-    window->text_height = text_height;
-    window->text_handle = text_handle;
+    window->textWidth = textWidth;
+    window->textHeight = textHeight;
+    window->textHandle = textHandle;
 
     SetProp(handle, WINDOW_ENTRY_NAME, window);
     ShowWindow(handle, SW_SHOW);
     return window;
 }
 
-void window_destroy(Window *window) {
+void windowDestroy(Window *window) {
     ShowWindow(window->handle, SW_HIDE);
     RemoveProp(window->handle, WINDOW_ENTRY_NAME);
 
     DeleteDC(window->memoryDC);
     DestroyWindow(window->handle);
 
-    window->surface->ldr_buffer = NULL;
-    image_release(window->surface);
+    window->surface->ldrBuffer = NULL;
+    imageRelease(window->surface);
     free(window);
 }
 
-int window_should_close(Window *window) {
-    return window->should_close;
+int windowShouldClose(Window *window) {
+    return window->shouldClose;
 }
 
-void window_set_userdata(Window *window, void *userdata) {
+void windowSetUserdata(Window *window, void *userdata) {
     window->userdata = userdata;
 }
 
-void *window_get_userdata(Window *window) {
+void *windowGetUserdata(Window *window) {
     return window->userdata;
 }
 
@@ -292,28 +291,28 @@ static void presentSurface(Window *window) {
     ReleaseDC(window->handle, windowDC);
 }
 
-void window_draw_buffer(Window *window, Framebuffer *buffer) {
-    private_blit_bgr(buffer, window->surface);
+void windowDrawBuffer(Window *window, Framebuffer *buffer) {
+    privateBlitBgr(buffer, window->surface);
     presentSurface(window);
 }
 
-void window_draw_text(Window* window, char* text) {
+void windowDrawText(Window* window, char* text) {
 #ifdef UNICODE
     wchar_t* wc;
     int len = MultiByteToWideChar(CP_ACP, 0, text, strlen(text), NULL, 0);
     wc = new wchar_t[len + 1];
     MultiByteToWideChar(CP_ACP, 0, text, strlen(text), wc, len);
     wc[len] = '\0';
-    SetWindowText(window->text_handle, wc);
+    SetWindowText(window->textHandle, wc);
     delete[] wc;
 #else
-    SetWindowText(window->text_handle, text);
+    SetWindowText(window->textHandle, text);
 #endif // !UNICODE
 }
 
-/* input related functions */
+/* Input Related Functions */
 
-void input_poll_events(void) {
+void inputPollEvents(void) {
     MSG message;
     while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
         TranslateMessage(&message);
@@ -321,17 +320,17 @@ void input_poll_events(void) {
     }
 }
 
-int inputKeyPressed(Window *window, keycode_t key) {
+int inputKeyPressed(Window *window, Keycode key) {
     assert(key >= 0 && key < KEY_NUM);
     return window->keys[key];
 }
 
-int input_button_pressed(Window *window, button_t button) {
+int inputButtonPressed(Window *window, Button button) {
     assert(button >= 0 && button < BUTTON_NUM);
     return window->buttons[button];
 }
 
-void input_query_cursor(Window *window, float *xpos, float *ypos) {
+void inputQueryCursor(Window *window, double *xpos, double *ypos) {
     POINT point;
     GetCursorPos(&point);
     ScreenToClient(window->handle, &point);
@@ -339,13 +338,13 @@ void input_query_cursor(Window *window, float *xpos, float *ypos) {
     *ypos = (float)point.y;
 }
 
-void input_set_callbacks(Window *window, callbacks_t callbacks) {
+void inputSetCallbacks(Window *window, Callbacks callbacks) {
     window->callbacks = callbacks;
 }
 
-/* misc platform functions */
+/* Misc Platform Functions */
 
-static double get_native_time(void) {
+static double getNativeTime(void) {
     static double period = -1;
     LARGE_INTEGER counter;
     if (period < 0) {
@@ -357,10 +356,10 @@ static double get_native_time(void) {
     return counter.QuadPart * period;
 }
 
-float platform_get_time(void) {
+double platformGetTime(void) {
     static double initial = -1;
     if (initial < 0) {
-        initial = get_native_time();
+        initial = getNativeTime();
     }
-    return (float)(get_native_time() - initial);
+    return getNativeTime() - initial;
 }

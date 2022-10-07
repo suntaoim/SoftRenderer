@@ -35,10 +35,32 @@ inline double random_double(double min, double max) {
 
 // Return a random integer in [min,max]
 inline int random_int(int min, int max) {
-    return static_cast<int>(random_double(min, max + 1));
+    return min + rand() % (max - min + 1);
+}
+
+inline double min(double a, double b) {
+    return (a < b) ? a : b;
+}
+
+inline int min(int a, int b) {
+    return (a < b) ? a : b;
+}
+
+inline double max(double a, double b) {
+    return (a > b) ? a : b;
+}
+
+inline int max(int a, int b) {
+    return (a > b) ? a : b;
 }
 
 inline double clamp(double x, double min, double max) {
+    if (x < min) return min;
+    if (x > max) return max;
+    return x;
+}
+
+inline int clamp(int x, int min, int max) {
     if (x < min) return min;
     if (x > max) return max;
     return x;

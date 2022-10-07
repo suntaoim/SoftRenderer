@@ -17,36 +17,36 @@ public:
 };
 
 using Window = struct Window;
-typedef enum {KEY_A, KEY_D, KEY_S, KEY_W, KEY_SPACE, KEY_NUM} keycode_t;
-typedef enum {BUTTON_L, BUTTON_R, BUTTON_NUM} button_t;
+typedef enum {KEY_A, KEY_D, KEY_S, KEY_W, KEY_Q, KEY_E, KEY_SPACE, KEY_NUM} Keycode;
+typedef enum {BUTTON_L, BUTTON_R, BUTTON_NUM} Button;
 typedef struct {
-    void (*key_callback)(Window *window, keycode_t key, int pressed);
-    void (*button_callback)(Window *window, button_t button, int pressed);
-    void (*scroll_callback)(Window *window, double offset);
-    void (*mouse_callback)(Window* window);
-} callbacks_t;
+    void (*keyCallback)(Window *window, Keycode key, int pressed);
+    void (*buttonCallback)(Window *window, Button button, int pressed);
+    void (*scrollCallback)(Window *window, double offset);
+    void (*mouseCallback)(Window* window);
+} Callbacks;
 
 /* platform initialization */
-void platform_initialize(void);
-void platform_terminate(void);
+void platformInitialize(void);
+void platformTerminate(void);
 
 /* window related functions */
-Window *window_create(const char *title, int width, int height, int text_width, int text_height);
-void window_destroy(Window *window);
-int window_should_close(Window *window);
-void window_set_userdata(Window *window, void *userdata);
-void *window_get_userdata(Window *window);
-void window_draw_buffer(Window *window, Framebuffer *buffer);
-void window_draw_text(Window* window, char* text);
+Window *windowCreate(const char *title, int width, int height, int text_width, int text_height);
+void windowDestroy(Window *window);
+int windowShouldClose(Window *window);
+void windowSetUserdata(Window *window, void *userdata);
+void *windowGetUserdata(Window *window);
+void windowDrawBuffer(Window *window, Framebuffer *buffer);
+void windowDrawText(Window* window, char* text);
 
 /* input related functions */
-void input_poll_events(void);
-int inputKeyPressed(Window *window, keycode_t key);
-int input_button_pressed(Window *window, button_t button);
-void input_query_cursor(Window *window, float *xpos, float *ypos);
-void input_set_callbacks(Window *window, callbacks_t callbacks);
+void inputPollEvents(void);
+int inputKeyPressed(Window *window, Keycode key);
+int inputButtonPressed(Window* window, Button button);
+void inputQueryCursor(Window* window, double* xpos, double* ypos);
+void inputSetCallbacks(Window* window, Callbacks callbacks);
 
 /* misc platform functions */
-float platform_get_time(void);
+double platformGetTime(void);
 
 #endif

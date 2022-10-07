@@ -1,14 +1,15 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
-#include "model.h"
+#include "object.h"
 #include "vector.h"
 #include "matrix.h"
 #include "platform.h"
 #include "graphics.h"
+#include "program.h"
 
 // Window
-static const char *const WindowITLE = "Viewer";
+static const char *const WindowITLE = "SoftRenderer";
 static const int WINDOW_WIDTH = 800;
 static const int WINDOW_HEIGHT = 800;
 
@@ -22,112 +23,107 @@ bool firstMouse = true;
 double deltaTime = 0.0;
 double preTime = 0.0;
 
-Model* ourModel = nullptr;
-
-void keyboard_callback(Window* window, double deltaTime);
-void mouse_callback(Window* window);
-void scroll_callback(Window* window, double offset);
+void keyboardCallback(Window* window, double deltaTime);
+void mouseCallback(Window* window);
 
 int main(int argc, char** argv) {
-    platform_initialize();
+    platformInitialize();
 
     // Create window
-    Window* window = window_create(WindowITLE, WINDOW_WIDTH, WINDOW_HEIGHT,
+    Window* window = windowCreate(WindowITLE, WINDOW_WIDTH, WINDOW_HEIGHT,
         200, 100);
     if (window == nullptr) {
         std::cerr << "Falied to create window" << std::endl;
         return -1;
     }
     Framebuffer* framebuffer = new Framebuffer(WINDOW_WIDTH, WINDOW_HEIGHT);
+    float aspect = static_cast<float>(WINDOW_WIDTH) /
+        static_cast<float>(WINDOW_HEIGHT);
 
-    // // 处理输入
-    // callbacks_t callbacks;
-    // memset(&callbacks, 0, sizeof(callbacks_t));
-    // // callbacks.button_callback = button_callback;
-    // callbacks.scroll_callback = scroll_callback;
-    // callbacks.mouse_callback = mouse_callback;
-    // input_set_callbacks(window, callbacks);
+    // double preTime = platform_get_time();
+    // double printTime = preTime;
+    // int num_frames = 0;
+    // const int text_size = 500;
+    // char screen_text[text_size];
+    // int show_num_frames = 0;
+    // int show_avg_millis = 0;
+    // double refresh_screen_text_timer = 0;
+    // const double REFRESH_SCREEN_TEXT_TIME = 0.1;
+    // snprintf(screen_text, text_size, "fps: - -, avg: - -ms\n");
 
     // Load model
-    ourModel = new Model("../assets/african_head.obj");
-    Image* texture = new Image("../assets/african_head_diffuse.png");
-    Light light;
+    Object cup("D:/Code/Graphics/SoftRenderer/assets/helmet.obj",
+        "D:/Code/Graphics/SoftRenderer/assets/helmet_basecolor.tga");
+    Object floor("../assets/floor.obj", "../assets/floor_diffuse.tga");
+    Program program;
+    program.light = new DirectionalLight(true);
 
-    float preTime = platform_get_time();
-    float printTime = preTime;
-    int num_frames = 0;
-    const int text_size = 500;
-    char screen_text[text_size];
-    int show_num_frames = 0;
-    int show_avg_millis = 0;
-    float refresh_screen_text_timer = 0;
-    const float REFRESH_SCREEN_TEXT_TIME = 0.1;
-    snprintf(screen_text, text_size, "fps: - -, avg: - -ms\n");
-
-
-    while (!window_should_close(window)) {
-        float curTime = platform_get_time();
+    while (!windowShouldClose(window)) {
+        double curTime = platformGetTime();
         double deltaTime = curTime - preTime;
 
-        // 测试输入
-        keyboard_callback(window, deltaTime);
-        mouse_callback(window);
+        keyboardCallback(window, deltaTime);
+        mouseCallback(window);
 
+        // Shadow mapping
+        // Pass 1: render from light source
+        // drawObject(cup, program);
+        // drawObject(floor, program);
+
+        // Pass 2: render from camera
         // 计算变换矩阵
         Matrix4 model = Matrix4::identity();
-        Matrix4 view = getViewMatrix(camera);
-        Matrix4 projection = getPerspectiveMatrix(radians(camera.zoom),
-            static_cast<double>(WINDOW_WIDTH) / static_cast<double>(WINDOW_HEIGHT),
-            -0.1, -100);
-        Matrix4 viewport = getViewportMatrix(WINDOW_WIDTH, WINDOW_HEIGHT);
-        Shader shader(model, view, projection, viewport, light, texture,
-            framebuffer);
+        Matrix4 view = getViewMatrix(camera.position, camera.front,
+            camera.worldup);
+        Matrix4 projection = getPerspectiveMatrix(camera.zoom, aspect, -0.01, -100);
+        program.vertexShader = new VertexShader(model, view, projection);
 
-        // 计算帧率和耗时
-        num_frames += 1;
-        if (curTime - printTime >= 1) {
-            int sum_millis = (int)((curTime - printTime) * 1000);
-            int avg_millis = sum_millis / num_frames;
+        // // 计算帧率和耗时
+        // num_frames += 1;
+        // if (curTime - printTime >= 1) {
+        //     int sum_millis = (int)((curTime - printTime) * 1000);
+        //     int avg_millis = sum_millis / num_frames;
 
-            show_num_frames = num_frames;
-            show_avg_millis = avg_millis;
-            num_frames = 0;
-            printTime = curTime;
-        }
-        preTime = curTime;
+        //     show_num_frames = num_frames;
+        //     show_avg_millis = avg_millis;
+        //     num_frames = 0;
+        //     printTime = curTime;
+        // }
+        // preTime = curTime;
 
-        ourModel->draw(shader);
-        window_draw_buffer(window, framebuffer);
+        drawObject(cup, program, framebuffer);
+        drawObject(floor, program, framebuffer);
+        windowDrawBuffer(window, framebuffer);
+        // std::cout << "Camera position: " << camera.position << std::endl;
 
-        //更新显示文本信息
-        refresh_screen_text_timer += deltaTime;
-        if (refresh_screen_text_timer > REFRESH_SCREEN_TEXT_TIME)
-        {
-            snprintf(screen_text, text_size, "");
+        // //更新显示文本信息
+        // refresh_screen_text_timer += deltaTime;
+        // if (refresh_screen_text_timer > REFRESH_SCREEN_TEXT_TIME)
+        // {
+        //     snprintf(screen_text, text_size, "");
 
-            char line[50] = "";
+        //     char line[50] = "";
 
-            snprintf(line, 50, "fps: %3d, avg: %3d ms\n\n", show_num_frames, show_avg_millis);
-            strcat(screen_text, line);
+        //     snprintf(line, 50, "fps: %3d, avg: %3d ms\n\n", show_num_frames, show_avg_millis);
+        //     strcat(screen_text, line);
 
-            window_draw_text(window, screen_text);
-            refresh_screen_text_timer -= REFRESH_SCREEN_TEXT_TIME;
-        }
+        //     window_draw_text(window, screen_text);
+        //     refresh_screen_text_timer -= REFRESH_SCREEN_TEXT_TIME;
+        // }
 
         framebuffer->clearColor(Color(0, 0, 0, 1));
         framebuffer->clearDepth(-10000);
 
-        input_poll_events();
+        inputPollEvents();
     }
 
-    window_destroy(window);
+    windowDestroy(window);
     delete framebuffer;
-    delete ourModel;
 
     return 0;
 }
 
-void keyboard_callback(Window* window, double deltaTime)
+void keyboardCallback(Window* window, double deltaTime)
 {
     if (inputKeyPressed(window, KEY_A)) {
         camera.processKeyboard(LEFT, deltaTime);
@@ -141,17 +137,17 @@ void keyboard_callback(Window* window, double deltaTime)
     if (inputKeyPressed(window, KEY_S)) {
         camera.processKeyboard(BACKWARD, deltaTime);
     }
-    // if (inputKeyPressed(window, KEY_Q)) {
-    //     camera.processKeyboard(DOWNWARD, deltaTime);
-    // }
-    // if (inputKeyPressed(window, KEY_E)) {
-    //     camera.processKeyboard(UPWARD, deltaTime);
-    // }
+    if (inputKeyPressed(window, KEY_Q)) {
+        camera.processKeyboard(DOWNWARD, deltaTime);
+    }
+    if (inputKeyPressed(window, KEY_E)) {
+        camera.processKeyboard(UPWARD, deltaTime);
+    }
 }
 
-void mouse_callback(Window* window) {
-    float xpos, ypos;
-    input_query_cursor(window, &xpos, &ypos);
+void mouseCallback(Window* window) {
+    double xpos, ypos;
+    inputQueryCursor(window, &xpos, &ypos);
 
     if (firstMouse)
     {
@@ -160,16 +156,11 @@ void mouse_callback(Window* window) {
         firstMouse = false;
     }
 
-    float xoffset = xpos - preX;
-    float yoffset = preY - ypos; // reversed since y-coordinates go from bottom to top
+    double xoffset = xpos - preX;
+    double yoffset = preY - ypos; // reversed since y-coordinates go from bottom to top
 
     preX = xpos;
     preY = ypos;
 
     camera.processMouseMove(xoffset, yoffset);
-}
-
-void scroll_callback(Window* window, double offset)
-{
-    camera.processMouseScroll(offset);
 }

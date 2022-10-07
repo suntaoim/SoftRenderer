@@ -5,6 +5,8 @@
 
 using std::sqrt;
 
+Vector2::Vector2(const Vector3& v) : x(v.x), y(v.y) {}
+
 // Vector3 Utility Functions
 // -------------------------
 
